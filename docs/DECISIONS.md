@@ -228,3 +228,13 @@ The owner approved the pilot on 2026-11-17 and settled what it had left open.
 
 - **Overlap between neighbouring topics.** A generator reads the stems of its own topic in the bank, and `dedupe` compares text, not concepts. `ponteiros` used arrays in eight questions, which `vetores` may ask again in other words. Unknown until neighbouring topics exist.
 - **No tool checks the level split or the balance of keys within a file.** The generators counted both with their own scripts and met them (each key correct 8, 8, 8, 8 times; 6, 6, 5, 5; 6, 6, 6, 6). The report shows the levels after the fact.
+
+### The content run after the pilot
+
+- **The run paused after 16 topics** (412 questions): it used up the owner's 5-hour usage limit, which cut six generators off in the middle of their topics; they went on after the limit reset. A topic costs about 260k tokens, some 200k for the generator and 57k for the blind solver. The other 34 topics wait for the owner's word.
+- **Subagents run on Opus 5.5 at high effort from here on**, by the owner's decision, to spare the usage limit. The first 16 topics were written on Fable 5.2. Opus did the blind solves of the last two (`modelo-relacional` and `operadores-e-expressoes`) and agreed with every key. The planted-flaw test of the blind solver has not been repeated on Opus.
+- **One orchestrator agent per subject runs the remaining topics**, not the main session. Run from the main session, every topic put two reports and two notifications into the main conversation, which is read again at each of them. The orchestrator's brief and the driver it calls are in `content/work/fanout/`, outside git; if more content is written in milestone 11, they are worth moving into `content/tools/` with tests.
+- **All 412 questions passed every step in the first round.** The repair round and the drop path are still untested on real questions.
+- **Relational algebra is written in plain text with brackets**: `σ[cond](R)`, `π[attrs](R)`, `ρ[X](R)` and `R ⋈[cond] S`, with the operators ∪ ∩ − × ⋈ ÷.
+- **Options that differ only in case carry a label.** `validate` compares the texts of a question's options without case, so `O(g(n))` and `o(g(n))` count as one text. In `notacoes-assintoticas` such options say "com O maiúsculo" or "little-omega". The rule stays as it is.
+

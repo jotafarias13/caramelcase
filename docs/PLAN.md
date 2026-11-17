@@ -2,7 +2,7 @@
 
 The build order for `docs/initial-spec.md`, as a checklist. Work top to bottom: the next task is the first unticked box. A milestone is done when every box under it is ticked, lint, type checks and tests pass, and it is committed.
 
-Status on 2026-11-17: milestones 1 to 3 done, the pilot of milestone 4 done and approved. Next: the other 47 topics of milestone 4. Milestone 5 runs in a session of its own, which the owner starts.
+Status on 2026-11-17: milestones 1 to 3 done. Milestone 4: pilot approved, and 16 of the 50 topics are in the bank (412 questions), all through the pipeline in the first round. The content run is paused: it used up the owner's usage limit. Next: the other 34 topics, when the owner says so, with subagents on Opus 5.5 at high effort (see milestone 4). Milestone 5 runs in a session of its own, which the owner starts.
 
 ## Decisions
 
@@ -55,6 +55,8 @@ The changes to the spec agreed with the owner, and the defaults chosen where spe
 ### 4. Launch content
 
 Runs in subagents, in the background. The owner runs milestone 5 in a session of its own, not beside the content run. Per topic: one agent generates; the tools validate, run code and dedupe; a fresh agent that sees only the stripped file blind-solves; failures get one repair attempt, then are dropped. Waves of about six agents. `content/README.md` has the commands, step by step.
+
+The 34 topics still to write are the ones with no questions in `content/REPORT.md`. Run them with one orchestrator agent per subject, so that the main session hears from each subject once and not four times per topic, and with at most three generators at a time. Every agent, the orchestrators included, is launched with model `opus` and effort `high`: the owner decided that. `content/work/fanout/brief.md` is the orchestrator's brief, with the task messages for generators, solvers and repairs, and `content/work/fanout/pipe.py` is the driver it calls. Both are local files, outside git. A topic costs about 260k tokens.
 
 - [x] Pilot: one topic per launch subject through the full pipeline, with `content/REPORT.md` and samples shown to the owner. (`ponteiros` 32, `filas-e-deques` 22 and `sql-juncoes` 24: all 78 passed in the first round and are in `content/bank/`. What the pilot changed, and what it left open for the owner, is under "Milestone 4" in `docs/DECISIONS.md`.)
 - [x] **Stop: the owner approves the pilot before the fan-out.** (Approved on 2026-11-17, with the decisions under "Milestone 4" in `docs/DECISIONS.md`.)
