@@ -136,7 +136,7 @@ For `output` and `runs`, the code is a complete program:
 
 - **Python** runs as a script on Python 3.12, with the standard library only.
 - **C** is a full program with its `#include` lines and `main`. It is compiled as C11 with `-Wall -Werror` and the address and undefined-behaviour sanitizers, so a warning, a read out of bounds, a use after `free` or a signed overflow fails the run.
-- **SQL** runs in an empty SQLite database with foreign keys enforced. The code creates its tables and inserts its rows before it queries them, so the student sees the data. Each row of a result is printed on one line, the columns separated by `|`, and NULL as `NULL`; a stem whose answer has more than one column says so, since the student has not seen that format. A result without rows prints nothing, so it cannot be the answer of an `output` question. Write standard SQL that SQLite accepts; a question about a feature SQLite lacks, such as stored procedures, uses `skip`.
+- **SQL** runs in an empty SQLite database with foreign keys enforced. The code creates its tables and inserts its rows before it queries them, so the student sees the data. Each row of a result is printed on one line, the columns separated by `|`, and NULL as `NULL`; a stem whose answer has more than one column says so, since the student has not seen that format. A query that returns several rows is asked through the number of its rows, with `SELECT COUNT(*)` and a sentence in the stem saying what it counts, or is built to return a single row. A result without rows prints nothing, so it cannot be the answer of an `output` question. Write standard SQL that SQLite accepts; a question about a feature SQLite lacks, such as stored procedures, uses `skip`.
 
 ## Repairing
 

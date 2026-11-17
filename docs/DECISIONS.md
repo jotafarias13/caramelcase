@@ -214,10 +214,17 @@ The owner saw these and did not object.
 - code with undefined behaviour is asked as "which statement is correct", with `skip`, never as "what does it print", which the blind solver's rules fail;
 - in SQL, a stem whose answer has more than one column says how the columns are separated, and an empty result cannot be the answer of an `output` question.
 
+### Decided by the owner after the pilot
+
+The owner approved the pilot on 2026-11-17 and settled what it had left open.
+
+- **The fan-out keeps the pilot's sizes**: 32, 22 and 24 questions per topic.
+- **A SQL query that returns several rows is asked through `SELECT COUNT(*)`.** `output` compares what the code prints with one option, and a join returns a table. The pilot's generator used COUNT(*) in 12 of its 17 code questions, with a sentence in the stem saying what it counts, although COUNT belongs to a later topic. Every key is checked by execution that way. The alternative, a fourth `code_check` that compares the number of rows, was not built. `prompts/generate.md` now states the convention.
+- **Topological sort stays in `filas-e-deques`** (3 of 22 questions): the syllabus lists it among the uses of a queue, though it needs the vocabulary of directed graphs, which no topic of the subject teaches.
+- **Content subagents keep reading the spec and the plan first**, as `CLAUDE.md` asks of any work: about 45 kB, some 5% of a generator's work. The owner keeps the line as it is. The blind solver stays the one exception, under `CLAUDE.md`'s own rule.
+- **Milestone 5 runs in a session of its own**, started by the owner, not in the main session beside the content run as the plan first had it.
+
 ### Open, not decided
 
-- **SQL questions and the one-line output.** `output` compares what the code prints with one option, and a join returns a table. The generator used `SELECT COUNT(*)` in 12 of its 17 code questions, with a sentence in the stem that explains it, although COUNT belongs to a later topic. Every key is checked by execution that way. The alternative is a fourth `code_check` that compares the number of rows a query returns, so that a question shows the query as it would be written. Kept as it is until the owner has read the samples.
-- **Topological sort in `filas-e-deques`.** The syllabus lists it among the uses of a queue, so the topic has it (3 of 22 questions), but it needs the vocabulary of directed graphs, which no topic of the subject teaches. Kept as the syllabus has it.
 - **Overlap between neighbouring topics.** A generator reads the stems of its own topic in the bank, and `dedupe` compares text, not concepts. `ponteiros` used arrays in eight questions, which `vetores` may ask again in other words. Unknown until neighbouring topics exist.
-- **Every generator reads the spec and the plan first**, as `CLAUDE.md` asks of any work: about 45 kB with nothing on writing questions, some 5% of a generator's work. An exemption for content subagents is the owner's to add to `CLAUDE.md`.
 - **No tool checks the level split or the balance of keys within a file.** The generators counted both with their own scripts and met them (each key correct 8, 8, 8, 8 times; 6, 6, 5, 5; 6, 6, 6, 6). The report shows the levels after the fact.

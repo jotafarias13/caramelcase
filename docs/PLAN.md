@@ -2,7 +2,7 @@
 
 The build order for `docs/initial-spec.md`, as a checklist. Work top to bottom: the next task is the first unticked box. A milestone is done when every box under it is ticked, lint, type checks and tests pass, and it is committed.
 
-Status on 2026-11-17: milestones 1 to 3 done, and the pilot of milestone 4. Next: the owner's approval of the pilot; then the other 47 topics in the background, and milestone 5 in the main session.
+Status on 2026-11-17: milestones 1 to 3 done, the pilot of milestone 4 done and approved. Next: the other 47 topics of milestone 4. Milestone 5 runs in a session of its own, which the owner starts.
 
 ## Decisions
 
@@ -54,10 +54,10 @@ The changes to the spec agreed with the owner, and the defaults chosen where spe
 
 ### 4. Launch content
 
-Runs in subagents, in the background, while milestones 5 onward proceed in the main session. Per topic: one agent generates; the tools validate, run code and dedupe; a fresh agent that sees only the stripped file blind-solves; failures get one repair attempt, then are dropped. Waves of about six agents. `content/README.md` has the commands, step by step.
+Runs in subagents, in the background. The owner runs milestone 5 in a session of its own, not beside the content run. Per topic: one agent generates; the tools validate, run code and dedupe; a fresh agent that sees only the stripped file blind-solves; failures get one repair attempt, then are dropped. Waves of about six agents. `content/README.md` has the commands, step by step.
 
 - [x] Pilot: one topic per launch subject through the full pipeline, with `content/REPORT.md` and samples shown to the owner. (`ponteiros` 32, `filas-e-deques` 22 and `sql-juncoes` 24: all 78 passed in the first round and are in `content/bank/`. What the pilot changed, and what it left open for the owner, is under "Milestone 4" in `docs/DECISIONS.md`.)
-- [ ] **Stop: the owner approves the pilot before the fan-out.**
+- [x] **Stop: the owner approves the pilot before the fan-out.** (Approved on 2026-11-17, with the decisions under "Milestone 4" in `docs/DECISIONS.md`.)
 - [ ] About 400 questions per launch subject pass validation, blind solve, code runs and dedupe. (Per topic, as in the pilot: 32 in Introdução à Programação, 22 in Estruturas de Dados, 24 in Banco de Dados.)
 - [ ] Each topic's difficulty spread is near 25% level 1–2, 50% level 3, 25% level 4–5.
 - [ ] Every question is imported as `verified`.
