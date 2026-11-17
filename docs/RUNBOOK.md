@@ -48,6 +48,19 @@ The API tests start their own Postgres 16 container, so Docker must be running. 
 
 CI (`.github/workflows/ci.yaml`) runs the same targets on every push.
 
+### The web app
+
+```sh
+make build-web                          # what a deploy serves: web/dist
+cd web && npx vite preview              # serves web/dist on :4173, with /api proxied to :8000
+cd web && npm run shots -- -g v1-home   # a screen beside its mockup: web/README.md
+cd web && npm run icons                 # after the design's app icon changes
+```
+
+- **The build has two steps**, both inside `npm run build`: the landing page is built for Node into `web/dist-ssr/`, then the app is built into `web/dist/` with the landing page's HTML written into `index.html`. `dist-ssr/` is not deployed.
+- **The service worker exists only in a build.** `npm run dev` and docker compose do not register one. After trying a build with `vite preview`, the browser keeps that origin's service worker: remove it in the browser's developer tools (Application, Service workers, Unregister) before using the same port for something else.
+- **`npm run shots` and `npm run icons` need Playwright's Chromium once**: `cd web && npx playwright install chromium`. CI does not need it.
+
 ## Database migrations
 
 The schema is managed by Alembic. Its files are in `api/app/db/migrations/versions/`, one per change, and `api/alembic.ini` lists the commands. The database URL comes from `DATABASE_URL`.

@@ -35,8 +35,8 @@ export function SegmentedControl<Value extends string>({
           key={option.value}
           value={option.value}
           className={cn(
-            "min-h-touch flex-1 cursor-pointer rounded-tile px-3",
-            "text-[14px] leading-[18px] font-medium text-fg-muted",
+            "min-h-touch flex-1 cursor-pointer rounded-tile px-1.5 py-1",
+            "text-[14px] leading-[18px] font-medium text-fg",
             "data-[state=on]:bg-brand data-[state=on]:font-bold data-[state=on]:text-brand-fg",
           )}
         >

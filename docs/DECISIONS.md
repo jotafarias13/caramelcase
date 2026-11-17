@@ -323,3 +323,149 @@ The owner approved the pilot on 2026-11-17 and settled what it had left open.
 - **No "Difícil" in `design/copy.md`.** The badge has three levels by milestone 1's decision, and the copy has labels for two. Milestone 6 needs the third.
 - **Guests are never cleaned up.** Every first visit makes a user row that stays, with its session, even if the visitor never returns.
 - **No rate limits yet** (milestone 7). Until then `POST /auth/magic-link` sends an email to any address as often as it is asked.
+
+## Milestone 6 · V1 frontend
+
+### How it was built
+
+- **The main session built the foundation and six subagents built the screens**, on Opus 5.5 at high effort, three at a time: session; Home and the catalog; onboarding and sign-in; then the summary; the profile and settings; the landing page. Each read its screen's mockups in full, as `CLAUDE.md` asks, and compared its screens with them by screenshot.
+- **`web/README.md` holds the frontend's rules** (styling, copy, server state, states, tests, the screenshot check), so that they are in one place for whoever builds the next screen.
+
+### Structure and libraries
+
+- **React Router 8 in its plain form**: `<BrowserRouter>` with a `<Routes>` tree in `src/app/routes.tsx`, no data loaders. Every page but the landing page is a lazy import.
+- **`openapi-fetch` is the API client**, typed by the generated `schema.d.ts`: a wrong path, parameter or body fails the type check. `src/api/queries.ts` wraps every call in a TanStack Query hook, and `unwrap()` turns every failure into one `ApiError` with the status and the API's error code. A request that never reached the server has status 0.
+- **Queries and mutations run with `networkMode: "always"`.** TanStack Query's default pauses a request while the browser says it is offline, and the screen would wait without a word. Now the request fails at once and the screen shows the offline state with its retry.
+- **One retry for a server error, none for a 4xx or a network failure.**
+- **The syntax highlighter is 150 lines of our own** (`src/lib/highlight.ts`), not a library. The spec asks for "a light syntax highlighter", the bank has three languages, and the design colours five kinds of token: keyword, function, number, string, comment. It is tested, and an unknown language is shown as plain text.
+- **Toasts are a small store and one component**, not Sonner, which the design names: the design's toast (icon, text, action, 44 px close button, four seconds) is 80 lines, and styling a library to it would be more. Modals and bottom sheets are built on Radix Dialog rather than a separate drawer library, so a sheet does not follow a dragging finger: `Sheet` serves the report form and the subject switcher, and the save-progress prompt and the delete confirmation (an alert dialog) are small components of their own, because their mockups lay the title out differently.
+- **Not installed:** a global store, a form library, a date library.
+
+### Guest first, language, theme, timezone
+
+- **`RequireUser` wraps every route but `/`, `/signin` and `/auth/callback`.** With no session it creates a guest without asking, sending the language in use and the device's timezone. Two requests at the same moment share one call, so a first visit makes one guest.
+- **Someone without a current subject has not been through onboarding** and is sent to `/start` from any other page. There is no separate "onboarded" field.
+- **Language on a first visit:** English for a browser whose first language is English, Portuguese for any other. The choice is kept on the device and, once there is a user, on the account.
+- **When account and device disagree on language or theme, the account wins**: that is a sign-in on a new device. A change in the app writes to both.
+- **The device's timezone wins over the account's.** When they differ the app sends the device's to `PATCH /me/settings`: the API counts days in the user's timezone, and a student who travels should not lose a streak to the old one.
+- **The theme is applied by a few lines in `index.html`** before the first paint, from the choice stored on the device, so a light-theme student never sees a dark flash.
+
+### System states
+
+- **Offline, error, 404 and maintenance cover the whole window**, navigation included, as their mockups draw them. Loading and empty stay inside the screen's frame.
+- **Which state a failed request shows:** offline when the request did not reach the server; maintenance for a 502, 503 or 504 (the API's own 503 is "database unavailable", and the others are what nginx answers while the API restarts); 404 for a 404; the error screen for the rest.
+- **Flagged routes:** `<Flagged flag="...">` shows the 404 screen while the flag is off and renders its child, a lazy component, only when it is on, so the feature's code is not requested. V1 has no flagged route; the test uses one of its own, as the API's does. The first real use of `useFlag` is the daily-reminder switch in Settings.
+- **The navigation tabs are Início, Perfil and Ajustes.** Revisão and Ligas, and the move of Ajustes under Perfil, come with their routes in milestone 9.
+
+### Copy
+
+- **`i18n/pt-BR.json` and `en.json` are written by hand from `design/copy.md`**, with keys named after what the text is for (`states.offline_title`), not generated from the copy file's own keys, which are per mockup and repeat a text for every screen it appears on. Sample values in the copy became variables.
+- **Three things enforce "no hardcoded strings":** the lint rule `local/no-hardcoded-copy` (`web/eslint-rules/`) fails on text in JSX and in the attributes people read or hear; `t()` checks its keys at compile time; and a test compares the keys and variables of the two files.
+- **"Difícil" / "Hard"** is the third difficulty label, which the copy file lacks (left open in milestone 5).
+- **The wordmark is drawn as text**, as the mockups do, not from the SVG files. It is the one place where text is written into a component: the name is the same in every language.
+
+### Checking screens against mockups
+
+- **`npm run shots`** (`web/shots/`) opens each mockup and the app in the same state, at the mockup's frame size and in both themes, and writes them side by side with the differing pixels marked and counted. The app runs against a mock API, the same one the component tests use, with the mockup's sample data. It is a tool for building and reviewing a screen, not a test: it is not part of `make test` or CI.
+- **`-webkit-font-smoothing: antialiased` was removed** from the base styles. The mockups do not set it, and with it every letter differed by a pixel of weight.
+- **A mockup may be read through `shots/print-mockup.mjs`**, which leaves out the coordinates of SVG shapes and nothing else. Icons are named by `data-lucide` and Mel by its label, so the coordinates are never built from. A first reading of a screen's mockups is still of the whole file.
+
+### Landing page, PWA
+
+- **The landing page is rendered at build time into `index.html`**, in Portuguese, with its title and description from the translation files. `npm run build` builds `src/prerender.tsx` for Node first and then the app, whose build calls it.
+- **There is still one `index.html` for every address.** On any address but `/`, a two-line script empties the pre-rendered markup before it is painted. The alternative, a second HTML file for the app, would need its own rule in nginx and in the service worker.
+- **The app renders over the static HTML rather than hydrating it.** The static page is Portuguese and follows the system theme; a visitor with English or a stored theme would not match it, and React would report the mismatch. The cost is that an English visitor sees Portuguese until the script has loaded.
+- **The service worker precaches the build's files and nothing else**: no rule for `/api`, so questions and progress always come from the server. It updates itself when a new build is deployed. It is not registered by the dev server.
+- **Icons are exported by `npm run icons`** from `design/assets/` at the web sizes of the design, drawn by Playwright's Chromium, and committed in `web/public/icons/`. The maskable icon is the two adaptive layers on top of each other.
+- **Open, still: web fonts.** Geist and JetBrains Mono come from Google Fonts through `design/tokens.css`, which is consumed unchanged. Offline, or before they arrive, the app shows the system's fonts. Self-hosting them means either changing the tokens file or shipping the fonts twice.
+
+### Onboarding and sign-in
+
+- **"Bora praticar" at the end of onboarding saves and starts the first session.** One `PATCH /me/settings` stores university, course, subject and goal; then a session in the chosen subject opens. If the session cannot start the student lands on Home; if saving fails, a toast says so and step 4 stays.
+- **Spec against design: "Pular" is on all four steps**, as the mockups draw it, though only step 2 is optional. On step 2 it stores nothing. On steps 1, 3 and 4, which always have an answer selected, it keeps that answer and goes on.
+- **The step is in the address** (`/start?step=2`), so the browser's back button goes back a step. Someone who already has a subject and opens `/start` goes to Home.
+- **What is selected at first:** the language in use, the first published subject, and the user's goal (20 for a new guest). An empty university or course is stored as null.
+- **Sign-in never needs a user**: it works with no session at all. "Continuar com Google" is a plain link to the API and is shown only when `/config` says Google sign-in exists. "Continuar sem conta" goes to Home, where a guest is created if there is none. The close button goes back, or to Home when there is nothing to go back to.
+- **The email address is checked by its form before sending**, like the API does. After "link sent", "Usar outro e-mail" returns to the form with the address still in it.
+- **`/auth/callback`** verifies a token once (React's development double run is guarded against), and goes to Home. A 400 shows "this link no longer works" with the way back to sign-in; an `error` parameter shows that the Google sign-in failed; with no parameter, which is Google's successful return, it goes to Home.
+
+### Home and the catalog
+
+- **The greeting uses the first word of the name**, and "E aí!" when there is none.
+- **The goal card's button** says "Começar" when nothing was answered today and "Continuar" otherwise. It starts a session, or resumes the one left unfinished: the API decides. "Próximo: …" is left out when every topic is mastered.
+- **A button that starts practice is never a dead end.** When the subject has nothing to serve (409 `no_questions`), a toast says so and offers to switch subject. One hook, `src/lib/useStartPractice.ts`, does this for Home, the summary and the empty profile.
+- **Streak moments on Home:** "started", "at risk" and "lost" get a card with Mel, the counter, a sentence and, for the last two, a button that starts a session; it is at the top on phones and under the goal card on desktop. An extended streak gets no card on phones, where the chip shows it, and the plain counter on desktop. "Restored" arrives with V2 and V3.
+- **Spec against design, the streak's caption:** "Meta de hoje batida" is shown under the counter only when today's goal is met; otherwise it says "Praticou hoje". The streak counts a day with one finished session, so the mockup's caption would often be untrue.
+- **The goal ring on the caramel card stays ink when the goal is met**, with a check in the centre. The design's green would vanish on caramel; green is used on a plain surface.
+- **The rating card shows the last rating change**, on desktop only, as in the mockups. An unchanged rating has its own sentence.
+- **The subject switcher** is a sheet with the published subjects as radio rows and a link to `/subjects`. It is listed under "Not designed" and was built from the components.
+- **`/subjects`** takes from the V2 catalog mockups the row, the back arrow with the title and the 720 px column, and leaves out search, the course filter, the two headings and the add and remove buttons. A row shows the subject's rating or "Ainda não praticou"; the current one is marked. Choosing one makes it current and goes Home.
+- **A current subject that is no longer published** leads to an empty state that points at `/subjects`.
+
+### Session
+
+- **The breadcrumb is the subject's short badge without its slash, a slash, and the topic** ("prog / ponteiros"). The mockups show the subject's full name; the short text is what fits beside the difficulty badge with real names.
+- **Leaving a session asks nothing**: the close button goes Home and the session resumes from there.
+- **Options are set in the code font** when the question has code and every option is short (30 characters at most) and does not end with a period. Statements about a program stay in the text font.
+- **Keyboard:** 1 to 4 select, Enter checks and then continues. Enter keeps its own meaning on another control (the close link, "Reportar questão", a button), and the keys are off while the report form is open. After "Continuar", focus moves to the new question's title.
+- **Offline.** The chosen option is kept on the device from the moment it is chosen, so it survives a reload. "Verificar" without a connection keeps the answer and its time, shows the banner, and sends it when the connection returns, with the "De volta online" toast. While it waits the student may change the option.
+- **A session whose questions are all answered but that was never finished** (the student left on the last feedback) is finished when it is opened again.
+- **The report form** needs a reason; details are optional, at most 1000 characters. It closes with a thank-you toast, and stays open with an error toast when sending fails.
+- **An answer the server refuses** shows a toast and leaves the question as it was.
+
+### Summary
+
+- **Gain or loss is decided by the rating change alone.** An unchanged rating reads as a gain, with a grey "±0". A loss changes the words and Mel's pose and adds the reassuring line; colours and motion are those of a gain, and the change is grey with a down arrow.
+- **Level up:** the bar is full, its label says "Subiu de nível!" and a chip names the new level.
+- **The save-progress prompt is shown to a guest on the summary of their first finished session, and on no later one.** "Agora não" closes it; nothing is stored, so reloading that one summary shows it again. A guest who wants an account later finds "Entrar" in Settings.
+- **"Topics to review" is left out when nothing was missed.**
+- **Motion** follows the design's table for the rating, the XP bar and the level-up, with the duration tokens, so under reduced motion the final values are there from the first paint. The streak's five flame frames are not drawn: the design has one flame. The number ticks up when the session was the day's first.
+
+### Profile and settings
+
+- **A profile without a name** is titled "Perfil" with a user icon in place of the initial; the line with course and university shows what there is, or nothing.
+- **A student who has answered nothing sees the empty state**, whose button starts a session.
+- **"Domínio por tópico" lists the current subject's topics.** A bar is full when mastered, shows the accuracy while learning or practiced, and is empty while new.
+- **The calendar** shows the month the API returns, weeks from Sunday in both languages as in the mockup, with month and weekday names from the browser's `Intl`.
+- **Settings save at once**, with no save button. A failed save puts the control back, and for language and theme the device's value too, and a toast says so.
+- **A guest's account section** says there is no account and offers "Entrar". "Excluir conta" is there for a guest too: a guest's data is erased the same way.
+- **The delete confirmation** has "Cancelar" first and no close button; Esc closes it and a click outside does not. After deleting, and after "Sair", the app goes to the landing page.
+- **Signing out does not create a new guest.** `RequireUser` sends someone who had a user and now has none to the landing page; a guest is made again only when they start to play.
+
+### Landing page
+
+- **Three subjects and ten questions**, by the decision of milestone 1: "Três matérias pra começar", with the launch subjects as static text from the catalog, and "10 questões por sessão" (the number comes from `/config` once it loads, and is 10 in the static HTML). On desktop the three cards fill the row the mockup gives to five.
+- **The try-it question** behaves like a session's: "Verificar" needs a choice, then every option shows its reason and "Continuar praticando" leads to `/start`. The number keys are not bound on this page.
+- **The language switch is a native select** under the mockup's "PT-BR" label, so a phone opens its own picker.
+- **A visitor who has a session and has been through onboarding is sent to Home.** No other visitor gets a guest or a redirect.
+- **Product events:** `landing.viewed` once per visit and `landing.sample_answered` with whether it was right. These are the only events the app sends so far.
+
+### Spec against design, and mockups against the design's README
+
+- **XP.** Mockups show "+12 XP" and "+96"; the app shows what the API returns under the spec's numbers.
+- **Locked topics, five subjects, "8 a 12 questões", the subject's name in the breadcrumb, code with comments** in mockups are sample content; the decisions above and in earlier milestones say what is shown.
+- **Button labels sit one pixel higher than in the mockups.** The README gives a button label a 20 px line; the mockups set none. The README wins by its own rule.
+- **The toast has a close button and is 56 px tall**, as the README says; the one mockup with a toast draws neither.
+- **Placeholders are in `--text-subtle`**, not the browser's default grey of the mockups, which fails the README's contrast rule on a white field.
+- **Comparisons above 1% of pixels:** the landing page on phones (three subjects instead of five move everything below them up; each part matches when compared apart), Settings (the mockups select "Escuro" in both themes, and the comparison leaves the account on "Sistema" so that each theme can be photographed), and the toast above.
+- **`v1-flow-streak-mobile` is a board of five cards, not a screen**: it has no comparison of its own. Its cards were compared one at a time while Home was built.
+- **Not compared, for want of a mockup:** `/subjects`, `/auth/callback`, the subject switcher, the streak moments in place on Home, the guest's Settings, the level-up, English renders other than the session's, and every screen between 768 and 1279 px. The last was looked at on real data at 1024 px.
+
+### Copy written for this milestone
+
+`design/copy.md` has no text for the following, which were written in its voice in both languages. They are the owner's to change in `web/src/i18n/`.
+
+- Failures: an answer, a report, a save or a session that could not be sent or started; a subject that could not be switched; a sign-out or a delete that failed; an invalid email address.
+- Sign-in: the link that no longer works, the Google sign-in that failed, the link sent again.
+- Home and catalog: the greeting without a name, the subject switcher's title and link, "Praticou hoje", the unchanged rating, a subject without questions or topics, "Atual", the empty catalog.
+- Session and summary: the thank-you after a report, "Subiu de nível!" (from the design's README).
+- Settings: the guest's line and "Entrar".
+- Landing: "Três matérias pra começar", "10 questões por sessão…", and the page's title for search results.
+- Labels for screen readers: the code block, the streak and rating chips.
+
+### Open, not decided
+
+- **Guests after sign-out.** Someone who signs out and plays again gets a new guest, apart from the account. That is the spec's guest-first rule applied again, but it means progress made after signing out is merged only on the next sign-in.
+- **The profile has no way to enter a name** (carried from milestone 5).
+- **Session-expired is not told apart from signed-out**: both end on the landing page without a word.
+

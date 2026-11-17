@@ -16,12 +16,14 @@ htmlcov/
 # Node
 node_modules/
 dist/
+dist-ssr/
 *.tsbuildinfo
 
 # Questions still in the content pipeline (content/README.md)
 content/work/
 
 # Tests
+web/shots/out/
 playwright-report/
 test-results/
 

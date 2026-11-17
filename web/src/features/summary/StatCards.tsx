@@ -1,0 +1,102 @@
+import { Flame, Minus, TrendingDown, TrendingUp, Zap } from "lucide-react";
+import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import type { SessionSummary } from "@/api/types";
+import { cn } from "@/lib/utils";
+import { useCountUp } from "./motion";
+import { extendedStreakToday, formatDelta } from "./rules";
+
+type StatCardProps = {
+  /** The colour of the 24 px icon tile. */
+  tile: string;
+  icon: ReactNode;
+  label: string;
+  value: ReactNode;
+  children?: ReactNode;
+};
+
+// The "Stat card" of design/README.md, as the summary mockups draw it.
+function StatCard({ tile, icon, label, value, children }: StatCardProps) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-lg border border-border bg-surface p-3">
+      <div className="flex items-center gap-1.5">
+        <span
+          aria-hidden="true"
+          className={cn(
+            "flex size-6 shrink-0 items-center justify-center rounded-sm text-ink [&_svg]:size-3.5 [&_svg]:shrink-0",
+            tile,
+          )}
+        >
+          {icon}
+        </span>
+        <span className="font-mono text-[11px] leading-[14px] text-fg-muted">
+          {label}
+        </span>
+      </div>
+      <div className="font-mono text-[20px] leading-6 font-extrabold whitespace-nowrap text-fg tabular-nums">
+        {value}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** XP of the session, the rating in the subject and the streak. */
+export function StatCards({ summary }: { summary: SessionSummary }) {
+  const { t } = useTranslation();
+  const { rating, streak } = summary;
+  // rating-delta: the number counts to its new value; a loss moves the
+  // same calm way as a gain.
+  const shownRating = useCountUp(
+    Math.round(rating.before),
+    Math.round(rating.after),
+    "--dur-rating",
+  );
+  // streak-increment: the day this session added ticks up.
+  const extended = extendedStreakToday(summary);
+  const shownDays = useCountUp(
+    extended ? Math.max(0, streak.current - 1) : streak.current,
+    streak.current,
+    "--dur-streak",
+  );
+  const delta = Math.round(rating.delta);
+  const DeltaIcon = delta > 0 ? TrendingUp : delta < 0 ? TrendingDown : Minus;
+
+  return (
+    <div className="grid grid-cols-3 gap-2">
+      <StatCard
+        tile="bg-xp"
+        icon={<Zap strokeWidth={2.5} />}
+        label={t("common.xp")}
+        value={`+${summary.xp_earned}`}
+      />
+      <StatCard
+        tile="bg-rating"
+        icon={<TrendingUp strokeWidth={2.5} />}
+        label={t("common.rating")}
+        value={shownRating}
+      >
+        <div
+          className={cn(
+            "flex w-max items-center gap-1 font-mono text-[13px] leading-[18px] font-bold tabular-nums",
+            "animate-[fade-in_var(--dur-rating)_ease-out]",
+            delta > 0 ? "text-rating-text" : "text-fg-muted",
+          )}
+        >
+          <DeltaIcon
+            aria-hidden="true"
+            strokeWidth={2.5}
+            className="size-3.5 shrink-0"
+          />
+          <span>{formatDelta(delta)}</span>
+        </div>
+      </StatCard>
+      <StatCard
+        tile="bg-streak"
+        icon={<Flame strokeWidth={2.5} />}
+        label={t("common.streak")}
+        value={t("common.days", { count: shownDays })}
+      />
+    </div>
+  );
+}

@@ -7,10 +7,47 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/icons/favicon-32.png"
+    />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="theme-color" content="#1B2140" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- The build replaces the title and adds a description, from the
+         translation files (vite.config.ts, landingPrerender). -->
     <title>caramelCase</title>
+    <script>
+      // Before the first paint: the theme chosen on this device, or the
+      // system's. src/lib/theme.ts keeps it in step afterwards.
+      (function () {
+        var stored = null;
+        try {
+          stored = localStorage.getItem("caramelcase.theme");
+        } catch (error) {}
+        var light =
+          stored === "light" ||
+          (stored !== "dark" &&
+            window.matchMedia("(prefers-color-scheme: light)").matches);
+        document.documentElement.setAttribute(
+          "data-theme",
+          light ? "light" : "dark",
+        );
+      })();
+    </script>
   </head>
   <body>
+    <!-- The build puts the landing page's HTML inside #root, for search
+         engines and a fast first paint. The file is served for every
+         address, so on any other page it is emptied before it is seen. -->
     <div id="root"></div>
+    <script>
+      if (location.pathname !== "/") {
+        document.getElementById("root").textContent = "";
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

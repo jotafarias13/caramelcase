@@ -61,15 +61,23 @@ To be written: the production path through nginx (milestone 8) and rate limits (
 
 ## Web layout
 
+`web/README.md` has the rules for working in it.
+
 | Path | Role |
 | --- | --- |
+| `index.html` | The one HTML file, served for every address. The build writes the landing page into it as static HTML |
 | `src/main.tsx` | Entry: loads `design/tokens.css`, then Tailwind, applies the theme |
-| `src/app/` | App shell; router and providers from milestone 6 |
-| `src/features/` | One folder per feature |
-| `src/components/` | Shared components; `ui/` holds the shadcn-style primitives |
-| `src/lib/` | `cn()` and the theme helper |
-| `src/api/` | `openapi.json`, the API's schema, and `schema.d.ts`, the types generated from it. Both are written by `make types` and committed |
+| `src/app/` | `App` and its providers, the route table (`routes.tsx`), the navigation shell (`AppShell`), `RequireUser` (creates the guest, sends a new user to onboarding) and `Flagged` (a route behind a feature flag) |
+| `src/features/` | One folder per screen: `landing`, `auth` (sign-in and the link's landing page), `onboarding`, `home`, `catalog`, `session`, `summary`, `profile`, `settings`. Rules a screen decides by are pure functions in a `rules.ts` beside it |
+| `src/components/` | Shared components (`AnswerOption`, `CodeBlock`, `TopicNode`, `StreakCard`, `StateScreen` and others); `ui/` holds the primitives of `design/README.md` |
+| `src/api/` | `client.ts` (the typed fetch client and `ApiError`), `queries.ts` (every API call as a TanStack Query hook), `types.ts`; `openapi.json` and `schema.d.ts` are written by `make types` and committed |
+| `src/i18n/` | `pt-BR.json`, `en.json` and the setup. All interface text is here |
+| `src/lib/` | Theme, language and timezone preferences, flags, the syntax highlighter, product events, `cn()` |
+| `src/test/` | Sample API data (`fixtures.ts`), the mock API and the render helpers of the component tests |
+| `src/prerender.tsx` | Build-time entry that renders the landing page to HTML |
 | `src/styles/index.css` | Tailwind entry and base rules. No token is defined here |
+| `shots/` | Screenshots of the app beside the mockups (`npm run shots`) |
+| `eslint-rules/` | `no-hardcoded-copy`: fails the lint on interface text outside the translation files |
 
 ## Data model
 

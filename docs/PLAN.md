@@ -2,7 +2,7 @@
 
 The build order for `docs/initial-spec.md`, as a checklist. Work top to bottom: the next task is the first unticked box. A milestone is done when every box under it is ticked, lint, type checks and tests pass, and it is committed.
 
-Status on 2026-11-17: milestones 1 to 3 and 5 done. Milestone 4 is open but set aside: 34 of the 50 topics are in the bank (880 questions), imported as `verified`, and the owner decided that is enough to move on. Next: milestone 6, the V1 frontend. The other 16 topics of milestone 4 come later, when the owner says so, with subagents on Opus 5.5 at high effort (see milestone 4).
+Status on 2026-11-17: milestones 1 to 3, 5 and 6 done. Milestone 4 is open but set aside: 34 of the 50 topics are in the bank (880 questions), imported as `verified`, and the owner decided that is enough to move on. Next: milestone 7, V1 hardening. The other 16 topics of milestone 4 come later, when the owner says so, with subagents on Opus 5.5 at high effort (see milestone 4).
 
 ## Decisions
 
@@ -82,17 +82,19 @@ What milestone 6 builds on: `web/src/api/schema.d.ts` has every request and resp
 
 Read each screen's mockup files in full before building it.
 
-- [ ] Every V1 route in the spec exists: `/`, `/start`, `/home`, `/subjects`, `/session/:id`, `/session/:id/summary`, `/profile`, `/settings`, `/signin`, `/auth/callback`.
-- [ ] Each V1 screen matches its mockup at 360 px and 1280 px in both themes, checked by screenshots side by side with the mockup.
-- [ ] All copy comes from `i18n/pt-BR.json` and `i18n/en.json`, built from `design/copy.md`; a check fails on hardcoded strings. Portuguese is the default and the browser language is detected on first visit.
-- [ ] Session screen: keys 1 to 4 select, Enter confirms, code scrolls sideways, reasons follow `show_option_reasons`, and an interrupted session resumes where it stopped.
-- [ ] The first visit creates a guest silently; the sign-in prompt appears after the first finished session.
-- [ ] `useFlag(key)` reads `/config`; flagged features are lazy-loaded and absent when off.
-- [ ] Loading, empty, error, offline, 404 and maintenance states exist for every screen.
-- [ ] The landing page is pre-rendered to static HTML at build time.
-- [ ] PWA: manifest, icons exported from `design/assets/`, and a service worker caching the app shell only.
-- [ ] Nothing depends on hover; layouts respect safe areas.
-- [ ] Vitest component tests pass.
+- [x] Every V1 route in the spec exists: `/`, `/start`, `/home`, `/subjects`, `/session/:id`, `/session/:id/summary`, `/profile`, `/settings`, `/signin`, `/auth/callback`.
+- [x] Each V1 screen matches its mockup at 360 px and 1280 px in both themes, checked by screenshots side by side with the mockup. (`npm run shots` in `web/`: 56 of the 57 V1 mockups have a scene, 112 comparisons, nearly all under 1% of pixels differing. The exceptions and their reasons are under "Milestone 6" in `docs/DECISIONS.md`. `/subjects` and `/auth/callback` have no mockup.)
+- [x] All copy comes from `i18n/pt-BR.json` and `i18n/en.json`, built from `design/copy.md`; a check fails on hardcoded strings. Portuguese is the default and the browser language is detected on first visit. (The check is the lint rule `local/no-hardcoded-copy`, in `make lint`.)
+- [x] Session screen: keys 1 to 4 select, Enter confirms, code scrolls sideways, reasons follow `show_option_reasons`, and an interrupted session resumes where it stopped.
+- [x] The first visit creates a guest silently; the sign-in prompt appears after the first finished session.
+- [x] `useFlag(key)` reads `/config`; flagged features are lazy-loaded and absent when off. (V1 has no flagged route: `<Flagged>` is tested on one of its own, and `useFlag("reminders")` hides the daily-reminder switch in Settings.)
+- [x] Loading, empty, error, offline, 404 and maintenance states exist for every screen.
+- [x] The landing page is pre-rendered to static HTML at build time.
+- [x] PWA: manifest, icons exported from `design/assets/`, and a service worker caching the app shell only.
+- [x] Nothing depends on hover; layouts respect safe areas.
+- [x] Vitest component tests pass. (189 tests.)
+
+What milestone 7 builds on: the whole flow was played against the real API by a throwaway Playwright script (a new guest through onboarding, ten questions by keyboard, the summary, Home, Profile and Settings), which is the path the Playwright test of milestone 7 makes permanent; `@playwright/test` is already a dev dependency of `web/`. The app has no links to privacy and terms pages yet. `web/README.md` has the frontend's rules.
 
 ### 7. V1 hardening
 
@@ -162,4 +164,6 @@ None of these block the build; each has a mock or placeholder.
 - Final free-plan limits and ad frequency
 - Legal text for the privacy policy and terms
 - Where a student types their name, if anywhere: only Google gives one (see "Open, not decided" under milestone 5 in `docs/DECISIONS.md`)
+- Web fonts: served by Google Fonts as the design's token file asks, or self-hosted so they work offline (see "Landing page, PWA" under milestone 6 in `docs/DECISIONS.md`)
+- A look at the screens no mockup covers: `/subjects`, `/auth/callback`, the subject switcher on Home, the streak moments on Home, a guest's Settings, a profile without a name
 - The design's open placeholders: `[Benefício do plano]`, `[ANUAL]`, `[RECOMPENSA]`, `[nome da prova]`, `[seu-dominio]`
