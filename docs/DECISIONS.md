@@ -237,4 +237,8 @@ The owner approved the pilot on 2026-11-17 and settled what it had left open.
 - **All 412 questions passed every step in the first round.** The repair round and the drop path are still untested on real questions.
 - **Relational algebra is written in plain text with brackets**: `σ[cond](R)`, `π[attrs](R)`, `ρ[X](R)` and `R ⋈[cond] S`, with the operators ∪ ∩ − × ⋈ ÷.
 - **Options that differ only in case carry a label.** `validate` compares the texts of a question's options without case, so `O(g(n))` and `o(g(n))` count as one text. In `notacoes-assintoticas` such options say "com O maiúsculo" or "little-omega". The rule stays as it is.
+- **The run stopped at 34 topics and 880 questions**, by the owner's decision on 2026-11-17: 352 in Introdução à Programação, 264 in Estruturas de Dados and 264 in Banco de Dados are enough to build and try the app, and the other 16 topics come later. Milestone 4 stays open with two boxes unticked, and milestone 5 starts without waiting for it.
+- **The bank mixes two models.** The run went back to Fable 5.2 for a while and then to Opus 5.5 for the agents started last, so some of the later topics were written or blind-solved by Opus. The pipeline log does not record which model wrote a topic.
+- **Still no failure at any step**: 880 of 880 questions passed validation, the code run, dedupe and the blind solve in the first round, so the repair round and the drop path remain untested on real questions.
+- **The 880 questions were imported for real into the local database**, all as `verified`, with 1760 translations.
 
