@@ -1,0 +1,27 @@
+/* Tailwind, themed by the design handoff. The tokens themselves come from
+   design/tokens.css, imported once in src/main.tsx. No colour, font, radius
+   or shadow is defined here. */
+@import "tailwindcss";
+@config "../../tailwind.config.js";
+
+@layer base {
+  html {
+    background: var(--bg);
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--leading-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: var(--focus-width) solid var(--focus-ring);
+    outline-offset: var(--focus-offset);
+  }
+}

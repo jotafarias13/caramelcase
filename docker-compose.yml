@@ -1,0 +1,86 @@
+# Local development: Postgres 16, the API with reload, the Vite dev server.
+#
+#   docker compose up        then open http://localhost:5173
+#
+# It needs no .env file: every value has a development default. To change
+# one, copy .env.example to .env. Production has its own compose file in
+# deploy/ (milestone 8).
+name: caramelcase
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-caramel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-caramel}
+      POSTGRES_DB: ${POSTGRES_DB:-caramelcase}
+    ports:
+      - ${POSTGRES_PORT:-5432}:5432
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  api:
+    image: ghcr.io/astral-sh/uv:python3.12-bookworm-slim
+    working_dir: /app
+    # uv installs the locked dependencies on the first start, into a volume.
+    # The app logs each request itself, so uvicorn's access log is off.
+    command: >
+      uv run --frozen uvicorn app.main:app
+      --reload --reload-dir app --host 0.0.0.0 --port 8000 --no-access-log
+    environment:
+      ENVIRONMENT: local
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-caramel}:${POSTGRES_PASSWORD:-caramel}@db:5432/${POSTGRES_DB:-caramelcase}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_JSON: "false"
+      # Keep the container's virtualenv apart from the host's api/.venv.
+      UV_PROJECT_ENVIRONMENT: /opt/venv
+      UV_LINK_MODE: copy
+    ports:
+      - ${API_PORT:-8000}:8000
+    volumes:
+      - ./api:/app
+      - api_venv:/opt/venv
+      - uv_cache:/root/.cache/uv
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen("http://localhost:8000/api/v1/health")
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 90s
+      start_interval: 3s
+
+  web:
+    image: node:24-slim
+    working_dir: /app/web
+    # node_modules lives in a volume: the host's holds macOS binaries.
+    command: sh -c "npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
+    environment:
+      API_PROXY_TARGET: http://api:8000
+    ports:
+      - ${WEB_PORT:-5173}:5173
+    volumes:
+      - ./web:/app/web
+      # web/ reads the design handoff in place, at ../design.
+      - ./design:/app/design:ro
+      - web_node_modules:/app/web/node_modules
+    depends_on:
+      - api
+
+volumes:
+  db_data:
+  api_venv:
+  uv_cache:
+  web_node_modules:
