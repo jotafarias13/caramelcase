@@ -1,0 +1,305 @@
+/* caramelCase design tokens · direction A2 "Terminal + caramel"
+   Dark is the default theme. Set data-theme="light" or "dark" on <html> to force one;
+   with no attribute the page follows the system setting.
+   Same token names in both themes: fills are shared, text, tint and border values change. */
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700;800&display=swap');
+
+:root {
+  /* ---- fonts (both SIL Open Font License) ---- */
+  --font-sans: 'Geist', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* ---- type scale: size / line-height / weight ---- */
+  --text-display: 32px; --leading-display: 40px; --weight-display: 700;
+  --text-title: 24px; --leading-title: 32px; --weight-title: 700;
+  --text-question: 22px; --leading-question: 28px; --weight-question: 700;
+  --text-heading: 18px; --leading-heading: 24px; --weight-heading: 700;
+  --text-body: 16px; --leading-body: 24px; --weight-body: 400;
+  --text-body-sm: 14px; --leading-body-sm: 20px; --weight-body-sm: 400;
+  --text-caption: 12px; --leading-caption: 16px; --weight-caption: 500;
+  --text-button: 16px; --leading-button: 20px; --weight-button: 700;
+  --text-label-mono: 12px; --leading-label-mono: 16px; --weight-label-mono: 500;
+  --text-code: 13px; --leading-code: 21px; --weight-code: 400;
+  --text-code-lg: 14px; --leading-code-lg: 22px; --weight-code-lg: 400;
+  --text-stat-mono: 28px; --leading-stat-mono: 32px; --weight-stat-mono: 800;
+
+  /* ---- spacing, 4 px base ---- */
+  --space-0: 0px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+  --space-10: 64px;
+  --gutter-mobile: 16px; --gutter-tablet: 24px; --gutter-desktop: 32px;
+  --touch-min: 44px;
+  --frame-mobile: 360px; --frame-tablet: 768px; --frame-desktop: 1280px; /* breakpoints, for reference */
+  --content-max: 1040px; --sidebar-width: 248px;
+
+  /* ---- radius ---- */
+  --radius-px: 2px; /* progress segments, tiny bars */
+  --radius-xs: 4px; /* pixel chips, toggle knob, code slot */
+  --radius-sm: 6px; /* badges, key caps */
+  --radius-tile: 8px; /* chips, icon tiles, toggles, segmented items */
+  --radius-md: 10px; /* inputs, tabs, icon buttons, sidebar items */
+  --radius-lg: 12px; /* buttons, options, rows, code blocks */
+  --radius-bubble: 14px; /* chat bubbles */
+  --radius-card: 16px; /* cards, banners, achievement tiles */
+  --radius-xl: 20px; /* panels, sheets, modals */
+  --radius-full: 999px; /* pills, handles */
+
+  /* ---- fixed palette: never changes with theme ---- */
+  --ink: #141833;
+  --ink-raised: #252C52;
+  --ink-line: #4A5488;
+  --ink-selected: #1C3D55;
+  --ink-text: #F4F5FB;
+  --ink-muted: #B4BCDA;
+  --ink-subtle: #8F99BD;
+  --ink-24: rgba(20, 24, 51, 0.24);
+  --white: #FFFFFF;
+  --on-correct: #06281C;
+  --on-wrong: #3A0A12;
+  --on-xp: #1C1147;
+  --on-streak: #3A0A28;
+  --on-rating: #1F2E00;
+  --on-info: #0D1B45;
+  --wrong-hover: #FF8088;
+  --wrong-pressed: #F04C5A;
+  --xp-gain: #D9CDFF;
+  --syn-keyword: #A58BFF;
+  --syn-function: #F6A93B;
+  --syn-number: #B8F25A;
+  --syn-string: #3EE0A1;
+  --syn-comment: #8F99BD;
+
+  /* ---- Mel sprite colours (pixel art, fixed) ---- */
+  --mel-outline: #3A2314; --mel-coat: #F6A93B; --mel-coat-shade: #C47A17; --mel-cream: #FFE6B8; --mel-eye: #1A1210; --mel-tongue: #FF7A9C; --mel-collar: #40DDE6; --mel-tag: #FFD84A;
+
+  /* ---- motion ---- */
+  --dur-press: 80ms; --dur-select: 120ms;
+  --dur-reveal-hold: 120ms; --dur-reveal-sweep: 240ms; --dur-reveal-panel: 120ms;
+  --dur-xp: 600ms; --dur-rating: 700ms; --dur-streak: 500ms; --dur-level-up: 900ms;
+  --dur-overlay-in: 200ms; --dur-overlay-out: 150ms; --dur-toast-in: 160ms; --dur-toast-out: 120ms; --dur-toast-stay: 4000ms;
+  --ease-standard: cubic-bezier(.2, .8, .2, 1); --ease-out: ease-out; --ease-in: ease-in;
+  --ease-pixel-5: steps(5); --ease-pixel-6: steps(6);
+
+  /* ---- focus ---- */
+  --focus-width: 2px; --focus-offset: 3px;
+}
+
+/* ---- dark theme (default) ---- */
+:root, [data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1B2140;
+  --bg-well: #141833;
+  --surface: #252C52;
+  --surface-raised: #313966;
+  --border: #4A5488;
+  --border-strong: #6876A6;
+  --text: #F4F5FB;
+  --text-muted: #B4BCDA;
+  --text-subtle: #8F99BD;
+  --brand: #F6A93B;
+  --brand-text: #F6A93B;
+  --brand-deep: #C47A17;
+  --brand-cream: #FFE6B8;
+  --brand-pale: #FFF1D6;
+  --on-brand: #141833;
+  --action: #40DDE6;
+  --action-hover: #74E8EF;
+  --action-pressed: #22BFC8;
+  --action-shadow: #17868D;
+  --on-action: #062329;
+  --action-text: #40DDE6;
+  --action-tint: #1C3D55;
+  --action-border: #40DDE6;
+  --correct: #3EE0A1;
+  --correct-text: #3EE0A1;
+  --correct-tint: #1B4347;
+  --correct-border: #3EE0A1;
+  --wrong: #FF6470;
+  --wrong-text: #FF8A93;
+  --wrong-tint: #472748;
+  --wrong-border: #FF6470;
+  --wrong-shadow: #A8303E;
+  --warning: #FFD84A;
+  --warning-text: #FFD84A;
+  --warning-tint: #454030;
+  --warning-border: #FFD84A;
+  --info: #8DB4FF;
+  --info-text: #8DB4FF;
+  --info-tint: #26375F;
+  --info-border: #8DB4FF;
+  --streak: #FF5CB8;
+  --streak-text: #FF7CC6;
+  --xp: #A58BFF;
+  --xp-text: #B7A2FF;
+  --rating: #B8F25A;
+  --rating-text: #B8F25A;
+  --focus-ring: #FFFFFF;
+  --shadow-hard: #141833;
+  --overlay: rgba(10, 12, 32, 0.66);
+  --disabled-bg: #2B3157;
+  --disabled-text: #7781A8;
+  --btn-border: 1.5px solid transparent;
+  --code-bg: #141833;
+  --code-border: #4A5488;
+  --shadow-overlay: 0 16px 40px rgba(6, 8, 24, 0.5);
+}
+
+/* ---- light theme ---- */
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #F4F5FB;
+  --bg-well: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-raised: #E9ECF7;
+  --border: #D3D8EC;
+  --border-strong: #7C86AE;
+  --text: #141833;
+  --text-muted: #4A5380;
+  --text-subtle: #5F6993;
+  --brand: #F6A93B;
+  --brand-text: #8F5300;
+  --brand-deep: #C47A17;
+  --brand-cream: #FFE6B8;
+  --brand-pale: #FFF1D6;
+  --on-brand: #141833;
+  --action: #40DDE6;
+  --action-hover: #74E8EF;
+  --action-pressed: #22BFC8;
+  --action-shadow: #141833;
+  --on-action: #062329;
+  --action-text: #0A6F78;
+  --action-tint: #DDF8FA;
+  --action-border: #0B8791;
+  --correct: #3EE0A1;
+  --correct-text: #08704A;
+  --correct-tint: #DDF8EC;
+  --correct-border: #0C8A5A;
+  --wrong: #FF6470;
+  --wrong-text: #C21F33;
+  --wrong-tint: #FFE8EA;
+  --wrong-border: #D93445;
+  --wrong-shadow: #141833;
+  --warning: #FFD84A;
+  --warning-text: #7A5600;
+  --warning-tint: #FFF6D1;
+  --warning-border: #9A6E00;
+  --info: #8DB4FF;
+  --info-text: #2450C4;
+  --info-tint: #E6EEFF;
+  --info-border: #3B67D8;
+  --streak: #FF5CB8;
+  --streak-text: #C2187A;
+  --xp: #A58BFF;
+  --xp-text: #5B3BD1;
+  --rating: #B8F25A;
+  --rating-text: #456F00;
+  --focus-ring: #141833;
+  --shadow-hard: #BFC6E0;
+  --overlay: rgba(20, 24, 51, 0.5);
+  --disabled-bg: #E4E7F3;
+  --disabled-text: #8B93B5;
+  --btn-border: 1.5px solid #141833;
+  --code-bg: #141833;
+  --code-border: #141833;
+  --shadow-overlay: 0 16px 40px rgba(20, 24, 51, 0.22);
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+    color-scheme: light;
+    --bg: #F4F5FB;
+    --bg-well: #FFFFFF;
+    --surface: #FFFFFF;
+    --surface-raised: #E9ECF7;
+    --border: #D3D8EC;
+    --border-strong: #7C86AE;
+    --text: #141833;
+    --text-muted: #4A5380;
+    --text-subtle: #5F6993;
+    --brand: #F6A93B;
+    --brand-text: #8F5300;
+    --brand-deep: #C47A17;
+    --brand-cream: #FFE6B8;
+    --brand-pale: #FFF1D6;
+    --on-brand: #141833;
+    --action: #40DDE6;
+    --action-hover: #74E8EF;
+    --action-pressed: #22BFC8;
+    --action-shadow: #141833;
+    --on-action: #062329;
+    --action-text: #0A6F78;
+    --action-tint: #DDF8FA;
+    --action-border: #0B8791;
+    --correct: #3EE0A1;
+    --correct-text: #08704A;
+    --correct-tint: #DDF8EC;
+    --correct-border: #0C8A5A;
+    --wrong: #FF6470;
+    --wrong-text: #C21F33;
+    --wrong-tint: #FFE8EA;
+    --wrong-border: #D93445;
+    --wrong-shadow: #141833;
+    --warning: #FFD84A;
+    --warning-text: #7A5600;
+    --warning-tint: #FFF6D1;
+    --warning-border: #9A6E00;
+    --info: #8DB4FF;
+    --info-text: #2450C4;
+    --info-tint: #E6EEFF;
+    --info-border: #3B67D8;
+    --streak: #FF5CB8;
+    --streak-text: #C2187A;
+    --xp: #A58BFF;
+    --xp-text: #5B3BD1;
+    --rating: #B8F25A;
+    --rating-text: #456F00;
+    --focus-ring: #141833;
+    --shadow-hard: #BFC6E0;
+    --overlay: rgba(20, 24, 51, 0.5);
+    --disabled-bg: #E4E7F3;
+    --disabled-text: #8B93B5;
+    --btn-border: 1.5px solid #141833;
+    --code-bg: #141833;
+    --code-border: #141833;
+    --shadow-overlay: 0 16px 40px rgba(20, 24, 51, 0.22);
+  }
+}
+
+/* ---- derived tokens: recomputed wherever a theme is set ---- */
+:root, [data-theme] {
+  /* hard, unblurred pixel shadows */
+  --shadow-step-sm: 2px 2px 0 var(--shadow-hard);
+  --shadow-step-md: 3px 3px 0 var(--shadow-hard);
+  --shadow-step-lg: 4px 4px 0 var(--action-shadow);
+  --shadow-step-xl: 6px 6px 0 var(--brand-deep);
+  --shadow-selected: 3px 3px 0 var(--action-border);
+  --shadow-brand: 3px 3px 0 var(--brand-deep);
+
+  /* shadcn/ui aliases */
+  --background: var(--bg); --foreground: var(--text);
+  --card: var(--surface); --card-foreground: var(--text);
+  --popover: var(--surface); --popover-foreground: var(--text);
+  --primary: var(--action); --primary-foreground: var(--on-action);
+  --secondary: var(--surface-raised); --secondary-foreground: var(--text);
+  --muted: var(--surface-raised); --muted-foreground: var(--text-muted);
+  --accent: var(--brand); --accent-foreground: var(--on-brand);
+  --destructive: var(--wrong); --destructive-foreground: var(--on-wrong);
+  --input: var(--border-strong); --ring: var(--focus-ring);
+  --radius: var(--radius-lg);
+}
+
+/* ---- reduced motion: movement off, short fades stay ---- */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-press: 0ms; --dur-select: 0ms; --dur-reveal-hold: 0ms; --dur-reveal-sweep: 120ms; --dur-reveal-panel: 0ms;
+    --dur-xp: 0ms; --dur-rating: 0ms; --dur-streak: 0ms; --dur-level-up: 0ms;
+    --dur-overlay-in: 100ms; --dur-overlay-out: 100ms; --dur-toast-in: 100ms; --dur-toast-out: 100ms;
+  }
+}
