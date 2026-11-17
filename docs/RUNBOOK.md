@@ -20,16 +20,29 @@ The first start installs the API and web dependencies inside the containers, int
 
 `docker compose down` stops everything and keeps the data; `docker compose down -v` also deletes the database and the dependency volumes.
 
-A new database is empty. `make seed` creates the tables and the starting rows (see Seeding).
+A new database is empty. `make seed` makes it playable (see Seeding): from a clean clone, `docker compose up` and `make seed` are the two commands.
+
+### Signing in locally
+
+Nothing is needed to play: the app creates a guest on the first visit. To sign in:
+
+- **As the demo user.** `make seed` creates `demo@example.com` with three weeks of history and prints a link that signs in as it. The link is valid for 15 minutes; `make demo-user` prints a new one.
+- **With "Continue with Google".** Without `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, a mock stands in for Google and signs in as the demo user at once. With both set, the real flow runs; register `http://localhost:5173/api/v1/auth/google/callback` as a redirect URI at Google.
+- **With an email link.** Without `SMTP_HOST`, the email is written to the API's log: `docker compose logs api` shows the link. Any address works.
+
+The guest playing in the browser is merged into the account that signs in, so sign in from a private window to keep the demo user's history as it is.
 
 ## Checks
 
 ```sh
 make install      # once: uv sync and npm ci on the host
 make lint         # ruff, eslint, prettier
-make typecheck    # mypy, tsc
+make typecheck    # mypy, tsc, and that the web app's API types are current
 make test         # pytest and vitest
+make types        # after changing a route or a model in api/app/schemas/
 ```
+
+`make types` writes the API's OpenAPI schema to `web/src/api/openapi.json` and the TypeScript types to `web/src/api/schema.d.ts`. Both are committed. A pytest test fails when the first is out of date and `make typecheck` fails when the second is.
 
 The API tests start their own Postgres 16 container, so Docker must be running. To use a server that is already up instead, set `TEST_DATABASE_URL`: the tests drop everything in that database, and create and drop other databases on that server, so its user needs `CREATEDB`.
 
@@ -55,17 +68,28 @@ Outside docker compose, from `api/`: `uv run alembic upgrade head`, `uv run alem
 ## Seeding
 
 ```sh
-make seed        # make migrate, then python -m app.cli seed
+make seed        # everything a development database needs to be played on
 ```
 
-`python -m app.cli seed` writes the rows every environment needs, and is safe to run again:
+`make seed` runs, in the `api` container, the migrations and then four commands. Each is safe to run again:
+
+| Command | What it does |
+| --- | --- |
+| `python -m app.cli seed` | Plans, feature flags, subjects and topics (below) |
+| `python -m app.cli import-content` | The question bank (next section) |
+| `python -m app.cli publish-subjects --launch` | Publishes the three launch subjects and their verified questions (see Publishing a subject) |
+| `python -m app.cli demo-user` | Creates `demo@example.com` with three weeks of sessions and a streak of 7 days, and prints a sign-in link. If the demo user exists, only the link is new |
+
+The last two are for development. In production, run `seed` and `import-content` at a deploy, publish a subject by hand after its questions were checked, and never run `demo-user`: it refuses when `ENVIRONMENT=production`.
+
+The demo user's history is not written by hand: it plays real sessions on past dates, so its answers move the ratings of the questions it answered, as any student's do. To start it over, delete it and run `make demo-user`: `DELETE FROM users WHERE email = 'demo@example.com';`.
+
+`python -m app.cli seed` writes the rows every environment needs:
 
 - **Plans** follow `plans` in `api/app/settings.py`. Prices and limits are overwritten on every run, so change a plan there, not in the table.
 - **Feature flags** are created switched off. A flag that exists keeps its state.
 - **Subjects** follow `content/catalog.yaml`. A new one is created as a draft; an existing one gets its names, badge and order updated and keeps its status.
 - **Topics** follow the same file. A new one is created; an existing one gets its names and order updated. A topic that left the file stays in the database, because questions point at it.
-
-Milestone 5 adds to `make seed`: importing the content, publishing the launch subjects and creating a demo user.
 
 ## Importing the question bank
 
@@ -120,9 +144,39 @@ To be written in milestones 9 and 10: switching a flag, `grant-plan`.
 
 ## Publishing a subject
 
-To be written in milestone 5: the CLI command the owner runs after the hand check.
+Students see only published subjects, and are served only published questions. Importing never publishes: a question enters as `verified` (launch subjects) or `draft`.
+
+```sh
+make publish s="estruturas-de-dados"                        # docker compose
+uv run python -m app.cli publish-subjects estruturas-de-dados banco-de-dados   # from api/, anywhere
+```
+
+The command sets the subject's status to `published` and turns each of its `verified` questions into `published`. Drafts and retired questions are left alone. It prints how many questions it published.
+
+- **Before the first time:** check a sample of the subject's questions by hand (about 50).
+- **After importing more questions** into a published subject, run it again: the new ones wait as `verified` until then.
+- **To take one question out of play:** `UPDATE questions SET status = 'retired' WHERE external_id = '<id>';`. If the question is still in the files unchanged, the importer leaves it retired.
+- **To hide a whole subject again:** `UPDATE subjects SET status = 'draft' WHERE slug = '<slug>';`. Its questions keep their status and come back with the subject.
+
+A topic shows in the app once it has a published question.
+
+## Sign-in settings
+
+All from the environment (`.env.example` lists them):
+
+| Variable | Meaning |
+| --- | --- |
+| `APP_BASE_URL` | The web app's public address. Sign-in links in emails start with it, and Google sends the student back to `<APP_BASE_URL>/api/v1/auth/google/callback`, which must be registered at Google |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in. Without them, production has no Google sign-in (the routes answer 404 and `GET /config` says `google_sign_in: false`); development uses the mock |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `EMAIL_FROM` | Where sign-in links are sent from (STARTTLS). Without `SMTP_HOST` the email goes to the log, which in production means nobody can sign in by email |
+| `SESSION_COOKIE_SECURE` | Leave it `true`. Local docker compose sets `false`, because it serves plain http |
+| `CORS_ORIGINS` | The origins allowed to call the API with the cookie: the app's own |
+
+A session lasts 90 days from its last renewal (`SESSION_LIFETIME_DAYS`) and is renewed while the student keeps coming back. To sign a user out everywhere: `DELETE FROM sessions_auth WHERE user_id = '<id>';`.
 
 ## Troubleshooting
+
+- **The `api` container never becomes healthy, and its log stops after "Started reloader process".** On an Apple M4 with Docker Desktop 27.5, OpenSSL's CPU probe dies with "Illegal instruction" when the `cryptography` package loads (`docker compose exec api /opt/venv/bin/python -X faulthandler -c "import cryptography.hazmat.bindings._rust"` shows it). `docker-compose.yml` sets `OPENSSL_armcap=0` for the container, which skips the probe; check that the line is still there. A newer Docker Desktop may not need it.
 
 - **`run-code` or its tests fail with "cc is not installed".** Install a C compiler (Xcode command line tools on macOS, `gcc` on Linux), or name another one in `CODE_RUN_C_COMPILER`. The flags are `CODE_RUN_C_FLAGS`; the compiler must support `-fsanitize=address,undefined`.
 

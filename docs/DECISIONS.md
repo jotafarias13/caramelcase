@@ -242,3 +242,84 @@ The owner approved the pilot on 2026-11-17 and settled what it had left open.
 - **Still no failure at any step**: 880 of 880 questions passed validation, the code run, dedupe and the blind solve in the first round, so the repair round and the drop path remain untested on real questions.
 - **The 880 questions were imported for real into the local database**, all as `verified`, with 1760 translations.
 
+
+## Milestone 5 · V1 backend
+
+### Routes and their shapes
+
+- **`PATCH /me/settings` changes profile fields as well as settings.** Onboarding stores a language, a university, a course, a subject and a goal, and the spec has one route for all of it. So the route takes the fields of `user_settings` and, of `users`, the locale, timezone, display name, university, course and current subject. Only the fields sent change; null clears the name, the university or the course.
+- **Names of subjects and topics are sent in both languages** (`name_pt`, `name_en`), so that switching language redraws without a request. A question's text is sent in one language, the user's.
+- **`GET /config` is open to visitors** and adds to the spec's three things what the app needs before it draws: whether Google sign-in exists on this server, the session length, the goal options and the XP of a level.
+- **`POST /sessions` gives back the session the student left unfinished in that subject**, if there is one, instead of a new one. That is how an interrupted session is found again from Home. Only `mode: "practice"` is accepted, and anything else is a 422, until milestone 9 adds review.
+- **A session can be finished only when every question is answered** (409 `session_incomplete`). Otherwise one answer and a "finish" would keep a streak. Finishing twice counts once.
+- **Answering a question of a session again changes nothing and returns the first result**, even with another key. The offline flow sends an answer again when it lost the response.
+- **The summary is the response of `POST .../finish` and is also inside `GET /sessions/{id}`** once the session is finished, because the summary screen has its own address and can be reloaded. The session's own numbers are stored; the streak, goal and level in it are the student's at the moment of the request.
+- **A session payload shows, for an answered question, the key the student chose, whether it was right and its XP**, and nothing else. `SessionQuestion` has no field for the correct key, the reasons or the explanation.
+- **The order of a question's options is shuffled by a seed made of the session id and the question id**, so it differs between sessions and holds when a session is loaded again.
+- **`GET /me/activity` returns the current month of the student's calendar** without arguments, which is what the profile shows, or the days from `start` to `end`, at most 366. Only days with activity are listed.
+- **`GET /me/stats` carries what Home and the profile show**: level, streak with its state, today's goal, totals, the rating in every published subject (null before the first answer) and the rating change of the last finished session.
+- **Only a question that was in one of the user's sessions can be reported.** Any other id is a 404, so reports do not tell which ids exist.
+- **`POST /events` is open to visitors**, since the landing page has events before there is a guest. A batch has at most 50 events, an event's props at most 2000 bytes of JSON, a name is lower case with digits, dots and underscores, and a time in the future is stored as the time of arrival.
+- **`GET /me/export` and `DELETE /me` exist already**, each with one test. The export is every column of the user's rows in twelve tables, without session tokens and sign-in links. Deleting removes the `users` row, which takes the rest with it, and the sign-in links sent to the address. Milestone 7 still owns their box.
+- **Error codes**, beyond the framework's: `unauthenticated` (401), `csrf_header_missing` (403), `subject_not_found`, `session_not_found`, `question_not_in_session`, `question_not_found` (404), `no_questions`, `session_incomplete` (409), `invalid_magic_link` (400), `validation_error` (422).
+- **An operation is named after its function** (`get_me`, `post_answer`), not FastAPI's long default, because the names appear in the web app's generated types.
+
+### Rules where the spec is silent
+
+- **"Answers" in the K rules are rated answers.** A student's count in a subject and a question's count go up only on a first attempt, the one that moves the ratings. Topic mastery, the daily goal and XP count every answer, repeats included.
+- **A first attempt is the first time this student answers this question at all**, in any session.
+- **A first session in a subject is one with no earlier session there.**
+- **Selection, where the spec says "relax".** When fewer questions than a session needs were not answered in the last 14 days, all the recent ones come back at once. In a first session, levels 2 and 3 are used alone only if they fill the session. When the 30 closest cannot fill it under the limit of 3 per topic, the next closest are used, and after them the limit is dropped. Ties in closeness are broken at random: a fresh bank has five ratings, so most of it is tied.
+- **Students are served `published` questions of `published` subjects.** `python -m app.cli publish-subjects` publishes a subject and its `verified` questions, and is run again after an import into a published subject. Nothing else publishes.
+- **A subject's topics are listed only if they have a published question.** With 34 of 50 topics written, the other 16 would be rows that can never be practiced. `next_topic` is the first topic in catalog order that is not mastered.
+- **85% or more with under 10 answers is "practiced"**, not mastered.
+- **The 5 XP bonus is for a correct answer** to a question rated above the student, by the ratings from before the answer. Levels start at 1.
+- **The daily goal defaults to 20**, the option the onboarding mockup has selected. A day that met its goal stays met if the goal is raised, and lowering the goal can meet today's.
+- **A day is worked out with the timezone the user has at that moment.** Changing timezone does not rewrite earlier days.
+- **The stored streak changes only when a session is finished.** "At risk" and "lost" are worked out when it is read, and a lost streak keeps its length in the row until the next session, which is what "Sua sequência de 7 dias terminou" needs. `streaks.lost_length` and `lost_at` stay empty until streak repair (milestone 10).
+- **A review item is due 24 hours after the wrong answer**, not at the next local midnight. A wrong answer in practice to a question already in the queue starts it over; `lapses` counts wrong reviews only, so it stays 0 in V1.
+- **`entitlements_for` is built now**, because `GET /config` returns entitlements: no limits while billing is off for the user; with billing on, the plan of a subscription that is active, or canceled with its period still running, and the free plan otherwise. A `past_due` subscription gives the free plan until milestone 10 decides otherwise. Its arguments are the flag, the subscription and the plans rather than the spec's `(user, subscription, flags)`: it needs nothing else of the user.
+- **A flag without a row is off**, and a visitor sees only flags that are on for everyone.
+
+### Auth
+
+- **A session lasts 90 days and renews itself.** The spec gives no lifetime. A fixed one would sign a guest out for good, since a guest has no way back in, so a session past half of its lifetime gets the full lifetime again and the cookie is sent again.
+- **The CSRF header is `X-Requested-With`, with any value, on every state-changing route**, the auth routes and bearer requests included. One rule with no exceptions; a billing webhook will be the first (milestone 10).
+- **The token is never in a response body.** A native client can send it as a bearer header, as the spec says; how the Capacitor shell gets hold of it is milestone 12's question.
+- **An email link does not remember who asked for it**, which milestone 2 left open. The guest that is upgraded is the one in the browser that opens the link, and the email says to open it on the same device. Opened elsewhere, the link signs in without the guest's history, and the guest is merged when that browser signs in too.
+- **The link in the email is `<APP_BASE_URL>/auth/callback?token=...`**: the web app's page posts the token to `/auth/magic-link/verify`. `POST /auth/magic-link` answers 202 for any address.
+- **Google and an email link with the same address are one account.** An identity is looked up first, then the address. Google must say the address is verified.
+- **Merging a guest into an account.** Sessions, answers, reports and events change owner. Per subject, the rating built on more answers stays and the counts add up. Topic counts and days add up. The streak is rebuilt from the merged days. A question both have to review keeps the earlier date. The account keeps its settings and profile; the guest's university, course and current subject fill what is empty.
+- **Signing in ends the token the request came with** and issues a new one.
+- **A failed Google sign-in goes back to the app** at `/auth/callback?error=google_sign_in_failed` or `google_email_not_verified`, because the browser is on a page of ours, not in a fetch.
+- **Outside production, a mock stands in for Google when no client id is set**, and signs in as the demo user. In production without the keys the Google routes are 404.
+- **An email address is checked by its form only** (something, `@`, something with a dot), lower-cased. The link proves the rest.
+- **Local docker compose sets `SESSION_COOKIE_SECURE=false`**, so sign-in works over http from a phone on the same network. The setting defaults to true.
+
+### Code and tooling
+
+- **`app/schemas/`** holds the request and response models, apart from routes and services, which both use them.
+- **Services take `now` and `settings` as arguments and never commit**; a route commits once. That is what lets the demo user play sessions in the past and the tests move the clock.
+- **An answer's `created_at` is the request's time**, not the time of the insert, for the same reason.
+- **`ensure_row`** (`app/db/rows.py`) creates a missing row with `INSERT ... ON CONFLICT DO NOTHING` and returns it locked. With the lock on the session row, two requests cannot both add to a counter.
+- **No ORM-level cascade: deleting a user relies on the database's `ON DELETE CASCADE`**, as milestone 2 set up.
+- **`tzdata` is a dependency**: the slim Python image has no timezone database.
+- **Authlib asks for the `httpx2` package and falls back to httpx**, with a deprecation warning at start. The API stays on httpx: adding `httpx2` is the owner's call, and it is one line in `pyproject.toml` when wanted.
+- **`OPENSSL_armcap=0` in the local `api` container.** Authlib loads `cryptography`, whose OpenSSL dies with "Illegal instruction" while probing the CPU in Docker Desktop's VM on the owner's M4. Found when the container would not start; the runbook has the symptom.
+- **TypeScript types.** `make types` writes `web/src/api/openapi.json` from the app and `web/src/api/schema.d.ts` from that file with openapi-typescript. Both are committed, so CI's two jobs can each check one: a pytest test compares the JSON with the app, and `npm run typecheck` runs openapi-typescript with `--check`.
+- **The demo user** is `demo@example.com`, "Carol Demo". It plays real sessions on past dates through the practice service, with a fixed random seed: about three weeks, a streak of 7 days ending today, 78% of answers right. Its answers move question ratings like any student's. The command refuses to run in production.
+- **`make seed`** runs the migrations, `seed`, `import-content`, `publish-subjects --launch` and `demo-user`. `make publish`, `make demo-user` and `make types` are new.
+- **Tests.** The API's clock is a dependency the tests replace, and it moves a millisecond per request. The test client speaks https, because the cookie is Secure, and sends the CSRF header. The flag mechanism is tested on a route the test adds, since V1 has no flagged route.
+- **The real Google provider is tested against a transport that answers in Google's place.** It has not met Google itself: that needs the owner's client id.
+
+### Spec against design
+
+- **XP.** The mockups show "+12 XP" for an answer and "+96" for a session. The spec's numbers hold: 10 or 15 for a correct answer, 10 for finishing.
+- **Locked topics.** The profile and Home mockups show a locked topic; V1 has none, as decided in milestone 1.
+
+### Open, not decided
+
+- **Nobody is asked for a name.** The profile shows "Carol Nunes", but only Google gives a name; an account made by email link, and every guest, has none. `PATCH /me/settings` accepts `display_name`, so a field can be added wherever the owner wants it.
+- **No "Difícil" in `design/copy.md`.** The badge has three levels by milestone 1's decision, and the copy has labels for two. Milestone 6 needs the third.
+- **Guests are never cleaned up.** Every first visit makes a user row that stays, with its session, even if the visitor never returns.
+- **No rate limits yet** (milestone 7). Until then `POST /auth/magic-link` sends an email to any address as often as it is asked.

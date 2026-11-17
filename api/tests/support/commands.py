@@ -14,13 +14,21 @@ def alembic(*args: str, database_url: str) -> subprocess.CompletedProcess[str]:
 
 
 def cli(
-    *args: str, database_url: str, content_dir: Path | None = None
+    *args: str,
+    database_url: str,
+    content_dir: Path | None = None,
+    env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run `python -m app.cli <args>` against one database, reading the
-    content from content_dir when it is given.
+    content from content_dir when it is given. env adds to, or replaces,
+    variables of the command's environment.
     """
     return _run_module(
-        "app.cli", *args, database_url=database_url, content_dir=content_dir
+        "app.cli",
+        *args,
+        database_url=database_url,
+        content_dir=content_dir,
+        extra_env=env,
     )
 
 
@@ -34,8 +42,9 @@ def _run_module(
     *args: str,
     database_url: str,
     content_dir: Path | None = None,
+    extra_env: dict[str, str] | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    env = {**os.environ, "DATABASE_URL": database_url}
+    env = {**os.environ, "DATABASE_URL": database_url, **(extra_env or {})}
     if content_dir is not None:
         env["CONTENT_DIR"] = str(content_dir)
     return subprocess.run(

@@ -1,6 +1,6 @@
 # Architecture
 
-An outline. Each section says what exists today; milestone 7 completes it with the request path, the data model and where each business rule lives.
+Each section says what exists today. Milestone 7 reviews it against the finished V1; milestone 8 adds the production path.
 
 ## Repository
 
@@ -15,16 +15,33 @@ An outline. Each section says what exists today; milestone 7 completes it with t
 
 ## Request path
 
-Today, in development: browser → Vite dev server (`:5173`) → `/api` proxied to Uvicorn (`:8000`) → FastAPI → Postgres.
+Today, in development: browser → Vite dev server (`:5173`) → `/api` proxied to Uvicorn (`:8000`) → FastAPI → Postgres. The browser only ever talks to one origin, so the session cookie is a first-party cookie.
 
 Inside the API a request passes through, in order:
 
 1. `app/logger.py` `log_request`: gives the request an id, logs one line when it ends, returns the id in `X-Request-ID`.
 2. CORS, with origins from settings.
-3. The route in `app/routes/`, which gets a database session from `app/db/session.py`.
-4. `app/errors.py`: any error leaves as `{"error": {"code": "...", "message": "..."}}`.
+3. `require_csrf_header` (`app/routes/dependencies.py`), on every route: a POST, PATCH, PUT or DELETE without the `X-Requested-With` header is a 403.
+4. The route's own dependencies: `CurrentUser` (401 without a valid session), `OptionalUser`, and `require_flag(key)` on a flagged route (404 while the flag is off for whoever asks).
+5. The route in `app/routes/`: it reads the input, calls one or two functions of `app/services/`, commits, and returns a model from `app/schemas/`.
+6. The service: reads and writes rows, and calls the pure functions of `app/domain/` for every decision. It takes `now` and `settings` as arguments and never commits.
+7. `app/errors.py`: any error leaves as `{"error": {"code": "...", "message": "..."}}`.
 
-To be written: production path through nginx, authentication, CSRF, rate limits, feature flags.
+To be written: the production path through nginx (milestone 8) and rate limits (milestone 7).
+
+### Authentication
+
+- A session token is 256 random bits. The client holds it; `sessions_auth` holds its SHA-256 hash (`app/services/auth_sessions.py`).
+- The web app gets it as an httpOnly, Secure, SameSite=Lax cookie (`cc_session`); a native client sends the same token as `Authorization: Bearer`. `session_token` in `app/routes/dependencies.py` reads either.
+- A session lasts 90 days and is renewed, with the cookie sent again, once less than half of that is left.
+- `POST /auth/guest` creates a guest: a real `users` row with `is_guest` true and a `user_settings` row.
+- Signing in (`app/services/sign_in.py`) is the same for Google and for an email link. If nobody has the identity or the email, the guest in that browser becomes the account. If an account has it, the student is signed in to that account and the guest's history is merged into it (`merge_guest`), then the guest is deleted. Either way the old token is ended and a new one issued.
+- An email link (`app/services/magic_links.py`) is a random token stored hashed, spent by one UPDATE that also checks the 15 minutes.
+- Google (`app/providers/google.py`) is the authorization-code flow through Authlib. The `state` goes to Google and into a short-lived httpOnly cookie, and the callback compares the two.
+
+### What a session never sends
+
+`POST /sessions` and `GET /sessions/{id}` return `SessionQuestion`: stem, code and options with key and text only. That model has no field for the correct key, the reasons or the explanation, and `app/services/session_views.py` reads them in one function, `answer_feedback`, which runs after the answer is recorded. Tests check both the responses and the OpenAPI schema.
 
 ## API layout
 
@@ -34,11 +51,13 @@ To be written: production path through nginx, authentication, CSRF, rate limits,
 | `app/settings.py` | Every environment value and tunable number |
 | `app/enums.py` | The fixed vocabularies: statuses, modes, flag keys, plan keys |
 | `app/db/` | Engine and session, `base.py` (table conventions), `models/` (every table), `migrations/` (Alembic) |
-| `app/domain/` | Business rules as pure functions. So far `question_doc.py`: the format of a question and its rules. The rest arrives from milestone 5 |
-| `app/routes/` | One module per API area |
-| `app/services/` | Orchestration between routes, database and domain |
-| `app/providers/` | Email, billing, ads, tutor: interface, mock, real adapter |
-| `app/cli.py` | Commands run by hand, make and cron: `python -m app.cli seed` and `import-content` so far |
+| `app/domain/` | Business rules as pure functions: no database, no HTTP, no clock. See "Where each business rule lives" |
+| `app/schemas/` | The Pydantic models of requests and responses, one module per area. The OpenAPI schema comes from them |
+| `app/routes/` | One module per API area: `auth`, `account`, `config`, `catalog`, `practice`, `stats`, `feedback` (reports and events), `health`. `dependencies.py` has the signed-in user, the CSRF header and feature flags |
+| `app/services/` | Reading and writing rows around the domain functions: `practice`, `session_views`, `progress`, `catalog`, `stats`, `account`, `sign_in`, `auth_sessions`, `magic_links`, `users`, `flags`, `config`, `feedback`, `publishing`, `demo`, and the content ones (`seed`, `content_import`, `catalog_file`, `question_files`) |
+| `app/providers/` | Outside services behind an interface with a stand-in: `email` (console, SMTP) and `google` (mock, OAuth). Billing, ads and the tutor arrive in milestone 10 |
+| `app/db/rows.py` | `ensure_row`: get-or-create with a row lock, for the one-row-per-user-and-something tables |
+| `app/cli.py` | Commands run by hand, make and cron: `seed`, `import-content`, `publish-subjects`, `demo-user`, `openapi` |
 
 ## Web layout
 
@@ -49,6 +68,7 @@ To be written: production path through nginx, authentication, CSRF, rate limits,
 | `src/features/` | One folder per feature |
 | `src/components/` | Shared components; `ui/` holds the shadcn-style primitives |
 | `src/lib/` | `cn()` and the theme helper |
+| `src/api/` | `openapi.json`, the API's schema, and `schema.d.ts`, the types generated from it. Both are written by `make types` and committed |
 | `src/styles/index.css` | Tailwind entry and base rules. No token is defined here |
 
 ## Data model
@@ -131,8 +151,36 @@ The tests of `content/tools/` are in `api/tests/content_tools/`: the API is the 
 
 ## Where each business rule lives
 
-To be written from milestone 5: one row per rule, naming its function in `app/domain/` and its settings.
+Every rule is a pure function in `api/app/domain/`, with unit tests in `api/tests/domain/`, and every number it uses is a field of `api/app/settings.py`. The services call them; no route or query decides anything.
+
+| Rule | Function | Settings | Called from |
+| --- | --- | --- | --- |
+| Chance of a correct answer, P | `rating.predicted_success` | `rating_guess_chance`, `rating_scale` | selection, rating |
+| Both ratings after a first attempt | `rating.rate_answer`, with `user_k` and `question_k` | `user_k_early`, `user_k_early_answers`, `user_k`, `question_k_early`, `question_k_early_answers`, `question_k`, `user_rating_start` | `services/practice.answer_question` |
+| A question's starting rating | `rating.question_starting_rating` | `question_rating_by_prior` | `services/content_import` |
+| Which questions a session gets | `selection.select_questions` | `session_length`, `selection_target_success`, `selection_pool_size`, `selection_max_per_topic`, `selection_recent_days`, `first_session_prior_levels` | `services/practice.start_session` |
+| The order of a question's options | `selection.shuffled_option_keys` | none | `services/session_views` |
+| XP for an answer and for finishing | `xp.xp_for_answer`, `xp.xp_for_finishing` | `xp_correct`, `xp_harder_question_bonus`, `xp_session_finished` | `services/practice` |
+| Levels | `xp.level_progress` | `xp_per_level` | `services/progress` |
+| Daily goal | `daily_goal.goal_progress`, `is_goal_option` | `daily_goal_options`, `daily_goal_default` | `services/progress`, `services/account` |
+| The student's own day | `local_time.local_date` | `default_timezone` | wherever a day is counted |
+| Streak after a finished session | `streak.streak_after_session` | none | `services/practice.finish_session` |
+| Streak as shown today: active, at risk, lost | `streak.streak_today` | none | `services/progress.streak_of` |
+| Streak rebuilt from days | `streak.streak_from_days` | none | `services/sign_in.merge_guest` |
+| Topic mastery | `mastery.mastery_level` | `mastery_new_below_answers`, `mastery_learning_below`, `mastery_mastered_from`, `mastery_mastered_min_answers` | `services/catalog` |
+| Review schedule | `review.first_review`, `review.after_correct_review` | `review_intervals_days` | `services/practice` (a wrong answer); the rest from milestone 9 |
+| Is a flag on for this user | `flags.flag_is_on` | none | `services/flags` |
+| What a user may do | `entitlements.entitlements_for` | `plans` | `services/config`; enforced from milestone 10 |
+| The format of a question | `question_doc.QuestionDoc` | the `question_*` limits | the content tools and the importer |
+
+What one answer writes, all in one transaction (`services/practice.answer_question`): the `attempts` row with both ratings before and after; the question's rating and counts and the student's subject rating, on a first attempt only; the topic's `user_topic_mastery`; the day's `daily_activity`; the session's counts; and a `review_items` row when the answer is wrong. Finishing adds the finishing XP, the day's finished session and the `streaks` row. The session row is locked for the length of the request, so a repeated or simultaneous answer is counted once.
 
 ## Feature flags
 
-To be written in milestone 5.
+A flag is a row of `feature_flags` with a state: `off`, `staff` or `on`. Every key is in `FlagKey` (`app/enums.py`); seeding creates each one off, and a flag without a row is off.
+
+- **Routes.** A flagged route has `dependencies=[Depends(require_flag(FlagKey.X))]`. While the flag is off for whoever asks, it answers the same 404 as a route that does not exist. `staff` opens it to users with the staff role.
+- **The web app.** `GET /config` returns each flag as a boolean for the user who asks, with the plans and the user's entitlements.
+- **V1 has no flagged route.** The mechanism is tested with a route the test adds; milestone 9 is its first real use.
+
+Switching a flag has no command yet (the admin console is milestone 9): `UPDATE feature_flags SET state = 'on' WHERE key = '<key>';`.

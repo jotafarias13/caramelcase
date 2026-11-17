@@ -13,7 +13,9 @@ already running instead: everything in that database is dropped first.
   test sees what a request committed.
 - scratch_database: the URL of an empty database of the test's own, for a
   test that runs migrations or commits for real.
-- client: an anonymous HTTP client of the app. It does not start Postgres.
+- client: an HTTP client of the app, as a browser with no cookies yet. It
+  does not start Postgres. other_client is a second browser.
+- clock: the time the API believes it is, fixed and movable.
 
 The environment is exported before anything from app is imported: the
 settings are cached and the engine reads DATABASE_URL at import.
@@ -54,8 +56,9 @@ os.environ.setdefault(
 
 # Everything below reads the environment exported above.
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Iterator
 from contextlib import ExitStack
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import pytest_asyncio
@@ -64,6 +67,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 from testcontainers.community.postgres import PostgresContainer
 
+from app.db.base import utc_now
 from app.db.session import engine, get_session
 from app.main import app as fastapi_app
 from tests.support import commands
@@ -133,10 +137,58 @@ def app() -> FastAPI:
     return fastapi_app
 
 
+# Requests go to https, because the session cookie is Secure, and carry
+# the CSRF header, as the web app's do.
+_BASE_URL = "https://test"
+CSRF_HEADERS = {"X-Requested-With": "test"}
+
+
 @pytest_asyncio.fixture
 async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
-    """An anonymous HTTP client of the app. It does not start Postgres."""
+    """An HTTP client of the app, as a browser with no cookies yet. It
+    does not start Postgres.
+    """
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as c:
+    async with AsyncClient(
+        transport=transport, base_url=_BASE_URL, headers=CSRF_HEADERS
+    ) as c:
         yield c
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def other_client(app: FastAPI) -> AsyncIterator[AsyncClient]:
+    """A second browser, with cookies of its own."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(
+        transport=transport, base_url=_BASE_URL, headers=CSRF_HEADERS
+    ) as c:
+        yield c
+
+
+class Clock:
+    """The time the API believes it is. Tests read it and move it.
+
+    Every request moves it one millisecond, so no two requests of a test
+    happen at the same instant, as none do in production.
+    """
+
+    def __init__(self) -> None:
+        # A Monday, at noon in São Paulo.
+        self.now = datetime(2026, 11, 16, 15, 0, tzinfo=UTC)
+
+    def __call__(self) -> datetime:
+        self.now += timedelta(milliseconds=1)
+        return self.now
+
+    def advance(self, **amount: float) -> None:
+        self.now += timedelta(**amount)
+
+
+@pytest.fixture
+def clock(app: FastAPI) -> Iterator[Clock]:
+    """Fix the API's clock, for every request of the test."""
+    clock = Clock()
+    app.dependency_overrides[utc_now] = clock
+    yield clock
+    app.dependency_overrides.pop(utc_now, None)

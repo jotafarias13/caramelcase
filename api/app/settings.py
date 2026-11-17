@@ -60,9 +60,57 @@ class Settings(BaseSettings):
     # Where catalog.yaml and the question bank are read from.
     content_dir: Path = _REPO_CONTENT_DIR
 
+    # The web app's public address: the start of the links in emails and
+    # of the address Google sends the student back to. The API is reached
+    # under it, at /api.
+    app_base_url: str = "http://localhost:5173"
+
     # ---- auth ----
     session_token_bytes: int = 32  # 256-bit opaque session tokens
     magic_link_expire_minutes: int = 15
+    # A session ends this long after its last renewal. It is renewed, and
+    # the cookie sent again, once less than half of the time is left, so
+    # a student who keeps coming back is never signed out.
+    session_lifetime_days: int = 90
+    session_cookie_name: str = "cc_session"
+    # False only for local development over plain http.
+    session_cookie_secure: bool = True
+    # State-changing requests must carry this header, with any value.
+    # A browser does not send it across sites.
+    csrf_header_name: str = "X-Requested-With"
+    # Google sign-in. Without both values the mock provider is used, which
+    # signs in as mock_google_email; in production there is no mock and
+    # the Google routes answer 404.
+    google_client_id: str | None = None
+    google_client_secret: str | None = None
+    mock_google_email: str = "demo@example.com"
+    mock_google_name: str = "Carol Demo"
+    # Minutes the student has to come back from Google's consent screen.
+    oauth_state_expire_minutes: int = 10
+
+    # ---- email ----
+    # Without smtp_host, emails are written to the log instead of sent.
+    smtp_host: str | None = None
+    smtp_port: int = 587
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    email_from: str = "CaramelCase <no-reply@localhost>"
+
+    # ---- new users ----
+    default_timezone: str = "America/Sao_Paulo"
+    daily_goal_default: int = 20  # one of daily_goal_options
+
+    # ---- demo user (make seed, local only) ----
+    demo_user_email: str = "demo@example.com"
+    demo_user_name: str = "Carol Demo"
+    demo_history_days: int = 21
+
+    # ---- limits on what a client may send ----
+    report_comment_max_chars: int = 1000
+    events_max_batch: int = 50
+    event_props_max_bytes: int = 2000
+    # Days of activity GET /me/activity returns at most.
+    activity_max_days: int = 366
 
     # ---- question format (content/bank) ----
     # The limits a line of the question bank must respect. The reason and

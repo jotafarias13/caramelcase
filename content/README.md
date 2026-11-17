@@ -73,4 +73,6 @@ make import-content        # python -m app.cli import-content, in the api contai
 
 The importer checks the whole bank first and imports nothing if a line fails. Then it creates new questions (as `verified` in a launch subject, as `draft` elsewhere), rewrites questions whose content changed and adds 1 to their version, and retires questions that are no longer in the files. `--dry-run` shows the counts and saves nothing. `docs/RUNBOOK.md` has the details.
 
+Importing does not put a question in front of students: they are served `published` questions only. `make publish s="<subject>"` publishes a subject and its `verified` questions, and is run again after importing more questions into a subject that is already published. `docs/RUNBOOK.md`, "Publishing a subject".
+
 A test in `api/tests/test_content_bank.py` runs the same check on `content/bank/` in CI.

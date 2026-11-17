@@ -36,9 +36,26 @@ services:
       ENVIRONMENT: local
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-caramel}:${POSTGRES_PASSWORD:-caramel}@db:5432/${POSTGRES_DB:-caramelcase}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      # Where the web app is opened: the start of sign-in links.
+      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:5173}
+      # Plain http here, also from a phone on the same network.
+      SESSION_COOKIE_SECURE: "false"
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-CaramelCase <no-reply@localhost>}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_JSON: "false"
       CONTENT_DIR: /content
+      # OpenSSL (loaded by cryptography, which Authlib needs) probes the
+      # CPU when it starts. In Docker Desktop's VM on an Apple M4 that
+      # probe dies with "Illegal instruction" (Docker 27.5, kernel 6.12
+      # linuxkit), and the API never starts. 0 skips the probe; the only
+      # cost is crypto without hardware acceleration. Local only.
+      OPENSSL_armcap: "0"
       # Keep the container's virtualenv apart from the host's api/.venv.
       UV_PROJECT_ENVIRONMENT: /opt/venv
       UV_LINK_MODE: copy

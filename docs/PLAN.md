@@ -2,7 +2,7 @@
 
 The build order for `docs/initial-spec.md`, as a checklist. Work top to bottom: the next task is the first unticked box. A milestone is done when every box under it is ticked, lint, type checks and tests pass, and it is committed.
 
-Status on 2026-11-17: milestones 1 to 3 done. Milestone 4 is open but set aside: 34 of the 50 topics are in the bank (880 questions), imported as `verified`, and the owner decided that is enough to move on. Next: milestone 5, in a session of its own, which the owner starts. The other 16 topics of milestone 4 come later, when the owner says so, with subagents on Opus 5.5 at high effort (see milestone 4).
+Status on 2026-11-17: milestones 1 to 3 and 5 done. Milestone 4 is open but set aside: 34 of the 50 topics are in the bank (880 questions), imported as `verified`, and the owner decided that is enough to move on. Next: milestone 6, the V1 frontend. The other 16 topics of milestone 4 come later, when the owner says so, with subagents on Opus 5.5 at high effort (see milestone 4).
 
 ## Decisions
 
@@ -67,14 +67,16 @@ The 16 topics still to write are the ones with no questions in `content/REPORT.m
 
 ### 5. V1 backend
 
-- [ ] `api/app/domain/` holds pure functions for rating, selection, XP, daily goal, streak, topic mastery and review schedule. Each has unit tests built on the spec's numbers, including streaks across timezones, and reads every number from settings.
-- [ ] Routes for auth, account, config, catalog, practice, stats, reports and events exist under `/api/v1` with Pydantic models; errors use the single shape.
-- [ ] API tests against a real Postgres cover: a guest playing a session of 10 through to finish; the answer response's fields; a session payload that never contains the correct key, reasons or explanation; a guest upgrade keeping its history; a merge into an existing account; a magic link working once and expiring after 15 minutes.
-- [ ] Session tokens are stored hashed and sent as an httpOnly, Secure, SameSite=Lax cookie or a bearer header; state-changing routes require the CSRF header; CORS reads its origins from settings.
-- [ ] A wrong answer writes a `review_items` row.
-- [ ] A flagged route returns 404 while its flag is off; the flag supports off, staff and on.
-- [ ] `make seed` runs migrations, imports content, seeds plans and flags, publishes the launch subjects and creates a demo user with history.
-- [ ] The frontend's TypeScript types are generated from the OpenAPI schema.
+- [x] `api/app/domain/` holds pure functions for rating, selection, XP, daily goal, streak, topic mastery and review schedule. Each has unit tests built on the spec's numbers, including streaks across timezones, and reads every number from settings.
+- [x] Routes for auth, account, config, catalog, practice, stats, reports and events exist under `/api/v1` with Pydantic models; errors use the single shape.
+- [x] API tests against a real Postgres cover: a guest playing a session of 10 through to finish; the answer response's fields; a session payload that never contains the correct key, reasons or explanation; a guest upgrade keeping its history; a merge into an existing account; a magic link working once and expiring after 15 minutes.
+- [x] Session tokens are stored hashed and sent as an httpOnly, Secure, SameSite=Lax cookie or a bearer header; state-changing routes require the CSRF header; CORS reads its origins from settings.
+- [x] A wrong answer writes a `review_items` row.
+- [x] A flagged route returns 404 while its flag is off; the flag supports off, staff and on. (V1 has no flagged route: the test adds one. Milestone 9 is the first real use.)
+- [x] `make seed` runs migrations, imports content, seeds plans and flags, publishes the launch subjects and creates a demo user with history. (Run on the local database: 880 questions published, `demo@example.com` with 18 sessions.)
+- [x] The frontend's TypeScript types are generated from the OpenAPI schema. (`make types`; `web/src/api/schema.d.ts`.)
+
+What milestone 6 builds on: `web/src/api/schema.d.ts` has every request and response; the API's description in `/api/v1/docs` says how the cookie and the `X-Requested-With` header work; "Signing in locally" in `docs/RUNBOOK.md` has the demo user. `GET /me/export` and `DELETE /me` already exist, with one test each, for milestone 7 to review.
 
 ### 6. V1 frontend
 
@@ -96,7 +98,7 @@ Read each screen's mockup files in full before building it.
 
 - [ ] The Playwright test passes in CI: a guest opens the landing page, finishes a session and sees the summary.
 - [ ] Rate limits on the auth, answer and report routes, with tests.
-- [ ] `GET /me/export` returns the user's data and `DELETE /me` erases it; both tested.
+- [ ] `GET /me/export` returns the user's data and `DELETE /me` erases it; both tested. (Both were built in milestone 5 with one test each. Left here: check the export against every V1 table, and decide whether anonymous attempts are kept on delete.)
 - [ ] Privacy policy and terms pages exist in both languages with placeholder legal text.
 - [ ] `docs/ARCHITECTURE.md` explains the request path, the data model and where each business rule lives.
 - [ ] From a clean clone, two commands lead to a playable session.
@@ -154,9 +156,10 @@ Same four conditions as milestone 9, against the `v3-*` mockups. While `billing`
 None of these block the build; each has a mock or placeholder.
 
 - Hosting choice (DigitalOcean or AWS) and the domain
-- Google OAuth client id and secret
+- Google OAuth client id and secret (redirect URI to register: `<domain>/api/v1/auth/google/callback`)
 - SMTP credentials for sign-in emails
 - A hand check of about 50 questions per launch subject before it is published
 - Final free-plan limits and ad frequency
 - Legal text for the privacy policy and terms
+- Where a student types their name, if anywhere: only Google gives one (see "Open, not decided" under milestone 5 in `docs/DECISIONS.md`)
 - The design's open placeholders: `[Benefício do plano]`, `[ANUAL]`, `[RECOMPENSA]`, `[nome da prova]`, `[seu-dominio]`
