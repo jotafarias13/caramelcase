@@ -112,7 +112,9 @@ def test_questions_are_counted_by_subject_topic_and_difficulty() -> None:
     report = build_report(docs, [], the_catalog(), TODAY)
 
     # Subject, questions, level 1 to 2, level 3, level 4 to 5, with code,
-    # code run, key is longest, human-checked.
+    # code run, key is longest, human-checked. Five of the six questions
+    # have a longest option (the options 1, 2, 3 and 4 have none), and it
+    # is the correct one in one of the five.
     assert _row(report, "Estruturas de Dados")[1:] == [
         "6",
         "33%",
@@ -120,7 +122,7 @@ def test_questions_are_counted_by_subject_topic_and_difficulty() -> None:
         "17%",
         "1",
         "1",
-        "17%",
+        "20%",
         "1",
     ]
     assert _row(report, "Banco de Dados")[1:] == [

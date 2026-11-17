@@ -186,22 +186,49 @@ def test_code_that_prints_without_end_is_stopped_at_the_output_limit() -> None:
     [
         ("import random\nprint(random.random())", CodeLanguage.PYTHON),
         ("import time\nprint(time.time_ns())", CodeLanguage.PYTHON),
-        # The order of a set of strings changes from run to run.
+        # The order of a set of strings follows the hash seed, which is
+        # another one in each run: with two strings as with four.
         (
             "print(list({'pilha', 'fila', 'deque', 'lista'}))",
             CodeLanguage.PYTHON,
         ),
+        ("print(list({'pilha', 'fila'}))", CodeLanguage.PYTHON),
         ("SELECT random();", CodeLanguage.SQL),
     ],
-    ids=["random", "time", "set order", "sql random"],
+    ids=["random", "time", "set order", "set of two", "sql random"],
 )
-def test_code_that_prints_something_else_on_a_second_run_fails(
+def test_code_that_prints_something_else_on_another_run_fails(
     code: str, language: CodeLanguage
 ) -> None:
     outcome = run_code(code, language, SETTINGS)
 
     assert not outcome.ok
-    assert outcome.detail.startswith("it is not deterministic: a second run")
+    assert outcome.detail.startswith("it is not deterministic: another run")
+
+
+def test_every_run_of_a_question_has_its_own_fixed_hash_seed() -> None:
+    code = "import os\nprint(os.environ['PYTHONHASHSEED'])"
+
+    seeds = [
+        run_code(code, CodeLanguage.PYTHON, Settings(code_run_count=count))
+        for count in (1, 2)
+    ]
+
+    # One run sees seed 1. A second run sees seed 2, so the output differs.
+    assert seeds[0].ok
+    assert seeds[0].output == "1\n"
+    assert not seeds[1].ok
+    assert seeds[1].detail == (
+        "it is not deterministic: another run printed '2\\n' after '1\\n'"
+    )
+
+
+def test_a_set_of_integers_prints_in_the_same_order_on_every_run() -> None:
+    outcome = run_code(
+        "print(list({30, 10, 20}))", CodeLanguage.PYTHON, SETTINGS
+    )
+
+    assert outcome.ok
 
 
 def test_code_runs_in_an_empty_directory_without_the_users_environment(
@@ -211,7 +238,7 @@ def test_code_runs_in_an_empty_directory_without_the_users_environment(
     code = (
         "import json, os\n"
         "print(json.dumps(os.listdir('.')))\n"
-        "kept = {'PATH', 'TMPDIR', 'ASAN_OPTIONS'}\n"
+        "kept = {'PATH', 'TMPDIR', 'ASAN_OPTIONS', 'PYTHONHASHSEED'}\n"
         "print(json.dumps(sorted(set(os.environ) - kept)))\n"
         "print(input())"
     )

@@ -1,10 +1,13 @@
 """dedupe: flag near-duplicate questions within a subject.
 
 Two questions are near-duplicates when their Portuguese stems are at
-least as similar as settings.dedupe_similarity, and so is their code.
-Many questions share a stem such as "O que este programa imprime?", so
-the stem alone does not decide: two questions with code are duplicates
-only if the code is nearly the same too. A question with code and one
+least as similar as settings.dedupe_similarity and their code is at least
+as similar as settings.dedupe_code_similarity. Many questions share a
+stem such as "O que este programa imprime?", so the stem alone does not
+decide: two questions with code are duplicates only if the code is nearly
+the same too. Code has the higher bar because short programs of one
+language share their frame (the include and main of C, the CREATE TABLE
+of SQL): unrelated programs reach 0.88. A question with code and one
 without are never duplicates.
 
 Similarity is difflib's ratio, from 0 to 1: twice the number of matching
@@ -27,7 +30,7 @@ import typer
 
 from app.domain.question_doc import QuestionDoc
 from app.enums import Locale
-from app.settings import get_settings
+from app.settings import Settings, get_settings
 from content.tools import common, run_log
 
 _NOT_A_LETTER_OR_DIGIT = re.compile(r"[^a-z0-9]+")
@@ -60,11 +63,11 @@ class _Comparable:
 def find_duplicates(
     new: Sequence[QuestionDoc],
     existing: Sequence[QuestionDoc],
-    threshold: float,
+    settings: Settings,
 ) -> list[Duplicate]:
     """Compare each new question with the existing ones of its subject and
     with the new ones before it. Returns each flagged question once, with
-    the question it is most similar to.
+    the question it is most similar to. The two thresholds are settings.
     """
     seen = [_comparable(doc) for doc in existing]
     duplicates = []
@@ -74,8 +77,8 @@ def find_duplicates(
         for other in seen:
             if other.subject != question.subject:
                 continue
-            similarity = _similarity(question, other, threshold)
-            if similarity >= threshold and (
+            similarity = _similarity(question, other, settings)
+            if similarity > 0 and (
                 closest is None or similarity > closest.similarity
             ):
                 closest = Duplicate(
@@ -108,19 +111,21 @@ def _plain(text: str) -> str:
     return _NOT_A_LETTER_OR_DIGIT.sub(" ", without_accents).strip()
 
 
-def _similarity(a: _Comparable, b: _Comparable, threshold: float) -> float:
-    """The similarity of two questions: the lower of stem and code. 0 as
-    soon as one of them is known to be under the threshold.
+def _similarity(a: _Comparable, b: _Comparable, settings: Settings) -> float:
+    """The similarity of two near-duplicates: the lower of stem and code.
+    0 when the two are not near-duplicates: the stems are under their
+    threshold, the code is under its own, or only one of them has code.
     """
     if (a.code is None) != (b.code is None):
         return 0.0
-    stems = _ratio(a.stem, b.stem, threshold)
-    if stems < threshold or a.code is None or b.code is None:
+    stems = _ratio(a.stem, b.stem, settings.dedupe_similarity)
+    if stems == 0 or a.code is None or b.code is None:
         return stems
-    return min(stems, _ratio(a.code, b.code, threshold))
+    return min(stems, _ratio(a.code, b.code, settings.dedupe_code_similarity))
 
 
 def _ratio(a: str, b: str, threshold: float) -> float:
+    """The similarity of two texts, or 0 when it is under the threshold."""
     matcher = SequenceMatcher(None, a, b, autojunk=False)
     # Two cheap upper bounds of the ratio spare most of the full
     # comparisons.
@@ -128,13 +133,14 @@ def _ratio(a: str, b: str, threshold: float) -> float:
         return 0.0
     if matcher.quick_ratio() < threshold:
         return 0.0
-    return matcher.ratio()
+    ratio = matcher.ratio()
+    return ratio if ratio >= threshold else 0.0
 
 
 def dedupe(
     paths: Sequence[Path],
     against: Sequence[Path],
-    threshold: float,
+    settings: Settings,
     *,
     log: Path | None = None,
 ) -> tuple[int, list[Duplicate]]:
@@ -150,7 +156,7 @@ def dedupe(
         if line.doc.id not in new_ids
     ]
     duplicates = find_duplicates(
-        [line.doc for line in new_lines], existing, threshold
+        [line.doc for line in new_lines], existing, settings
     )
     if log is not None:
         flagged = {duplicate.question_id for duplicate in duplicates}
@@ -190,7 +196,7 @@ def command(
         paths,
         # A bank that does not exist yet is an empty bank.
         [path for path in against or [] if path.exists()],
-        get_settings().dedupe_similarity,
+        get_settings(),
         log=run_log.pipeline_log_path() if log else None,
     )
     for duplicate in duplicates:

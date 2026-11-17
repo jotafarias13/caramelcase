@@ -1,5 +1,6 @@
 """dedupe: near-duplicate questions within a subject."""
 
+from difflib import SequenceMatcher
 from pathlib import Path
 
 from app.settings import Settings
@@ -14,7 +15,9 @@ from tests.support.questions import (
     write_lines,
 )
 
-THRESHOLD = Settings().dedupe_similarity
+SETTINGS = Settings()
+THRESHOLD = SETTINGS.dedupe_similarity
+CODE_THRESHOLD = SETTINGS.dedupe_code_similarity
 SUBJECT = "estruturas-de-dados"
 PRINTS = "O que este programa imprime?"
 
@@ -33,7 +36,7 @@ def _ids(duplicates: list[Duplicate]) -> list[tuple[str, str]]:
 def test_different_questions_are_not_duplicates() -> None:
     docs = [doc(question(number)) for number in range(1, len(STEMS) + 1)]
 
-    assert find_duplicates(docs, [], THRESHOLD) == []
+    assert find_duplicates(docs, [], SETTINGS) == []
 
 
 def test_a_reworded_stem_is_a_duplicate_of_the_question_before_it() -> None:
@@ -52,7 +55,7 @@ def test_a_reworded_stem_is_a_duplicate_of_the_question_before_it() -> None:
         ),
     ]
 
-    duplicates = find_duplicates(docs, [], THRESHOLD)
+    duplicates = find_duplicates(docs, [], SETTINGS)
 
     assert _ids(duplicates) == [
         ("pilhas.0003", "pilhas.0001"),
@@ -82,7 +85,7 @@ def test_a_question_is_flagged_once_with_its_closest_match() -> None:
         ),
     ]
 
-    duplicates = find_duplicates(docs[2:], docs[:2], THRESHOLD)
+    duplicates = find_duplicates(docs[2:], docs[:2], SETTINGS)
 
     assert _ids(duplicates) == [("pilhas.0003", "pilhas.0002")]
 
@@ -92,8 +95,8 @@ def test_the_same_stem_in_another_subject_is_not_a_duplicate() -> None:
     there = doc(question(1, subject="banco-de-dados", topic="visoes"))
     other_topic = doc(question(1, topic="filas-e-deques"))
 
-    assert find_duplicates([here], [there], THRESHOLD) == []
-    assert _ids(find_duplicates([here], [other_topic], THRESHOLD)) == [
+    assert find_duplicates([here], [there], SETTINGS) == []
+    assert _ids(find_duplicates([here], [other_topic], SETTINGS)) == [
         ("pilhas.0001", "filas-e-deques.0001")
     ]
 
@@ -114,7 +117,7 @@ def test_questions_with_one_stem_and_different_code_are_not_duplicates() -> (
         doc(question(3, stem=PRINTS)),
     ]
 
-    assert find_duplicates(docs, [], THRESHOLD) == []
+    assert find_duplicates(docs, [], SETTINGS) == []
 
 
 def test_one_stem_and_nearly_the_same_code_is_a_duplicate() -> None:
@@ -126,13 +129,45 @@ def test_one_stem_and_nearly_the_same_code_is_a_duplicate() -> None:
         doc(output_question(3, respaced, "python", stem=PRINTS)),
     ]
 
-    duplicates = find_duplicates(docs, [], THRESHOLD)
+    duplicates = find_duplicates(docs, [], SETTINGS)
 
     assert _ids(duplicates) == [
         ("pilhas.0002", "pilhas.0001"),
         ("pilhas.0003", "pilhas.0001"),
     ]
     assert duplicates[1].similarity == 1.0
+
+
+def test_programs_that_share_only_their_frame_are_not_duplicates() -> None:
+    frame = (
+        "#include <stdio.h>\n\nint main(void) {{\n{body}\n    return 0;\n}}"
+    )
+    through_a_pointer = frame.format(
+        body="    int a = 2, b = 5;\n"
+        "    int *p = &a;\n"
+        "    *p = b + 1;\n"
+        '    printf("%d %d\\n", a, b);'
+    )
+    in_an_array = frame.format(
+        body="    int v[3] = {2, 5, 8};\n"
+        "    int *p = v + 1;\n"
+        "    *p = v[0] + 1;\n"
+        '    printf("%d %d\\n", v[1], v[2]);'
+    )
+    docs = [
+        doc(output_question(1, through_a_pointer, "c", stem=PRINTS)),
+        doc(output_question(2, in_an_array, "c", stem=PRINTS)),
+    ]
+    similarity = SequenceMatcher(
+        None,
+        " ".join(through_a_pointer.split()),
+        " ".join(in_an_array.split()),
+        autojunk=False,
+    ).ratio()
+
+    # Similar enough for two stems, but not for two programs.
+    assert THRESHOLD <= similarity < CODE_THRESHOLD
+    assert find_duplicates(docs, [], SETTINGS) == []
 
 
 def test_files_are_compared_with_each_other_and_with_the_bank(
@@ -154,7 +189,7 @@ def test_files_are_compared_with_each_other_and_with_the_bank(
     )
     log = tmp_path / "log.jsonl"
 
-    checked, duplicates = dedupe([work, other], [bank], THRESHOLD, log=log)
+    checked, duplicates = dedupe([work, other], [bank], SETTINGS, log=log)
 
     assert checked == 4
     assert _ids(duplicates) == [
@@ -180,7 +215,7 @@ def test_the_bank_can_be_checked_against_itself(tmp_path: Path) -> None:
         [question(1), question(2), question(3, stem=STEMS[0])],
     )
 
-    checked, duplicates = dedupe([bank], [bank], THRESHOLD)
+    checked, duplicates = dedupe([bank], [bank], SETTINGS)
 
     assert checked == 3
     assert _ids(duplicates) == [("pilhas.0003", "pilhas.0001")]

@@ -1,0 +1,15 @@
+{"at":"2026-11-17T10:51:27Z","step":"validate","subject":"estruturas-de-dados","topic":"filas-e-deques","checked":22,"failed":[]}
+{"at":"2026-11-17T10:51:28Z","step":"dedupe","subject":"estruturas-de-dados","topic":"filas-e-deques","checked":22,"failed":[]}
+{"at":"2026-11-17T10:51:28Z","step":"validate","subject":"introducao-a-programacao","topic":"ponteiros","checked":32,"failed":[]}
+{"at":"2026-11-17T10:51:28Z","step":"dedupe","subject":"introducao-a-programacao","topic":"ponteiros","checked":32,"failed":[]}
+{"at":"2026-11-17T10:52:50Z","step":"blind-solve","subject":"introducao-a-programacao","topic":"ponteiros","checked":32,"failed":[]}
+{"at":"2026-11-17T10:53:10Z","step":"blind-solve","subject":"estruturas-de-dados","topic":"filas-e-deques","checked":22,"failed":[]}
+{"at":"2026-11-17T10:54:48Z","step":"validate","subject":"banco-de-dados","topic":"sql-juncoes","checked":24,"failed":[]}
+{"at":"2026-11-17T10:54:48Z","step":"dedupe","subject":"banco-de-dados","topic":"sql-juncoes","checked":24,"failed":[]}
+{"at":"2026-11-17T10:56:21Z","step":"blind-solve","subject":"banco-de-dados","topic":"sql-juncoes","checked":24,"failed":[]}
+{"at":"2026-11-17T10:56:32Z","step":"run-code","subject":"introducao-a-programacao","topic":"ponteiros","checked":19,"failed":[]}
+{"at":"2026-11-17T10:56:33Z","step":"run-code","subject":"estruturas-de-dados","topic":"filas-e-deques","checked":10,"failed":[]}
+{"at":"2026-11-17T10:56:35Z","step":"run-code","subject":"banco-de-dados","topic":"sql-juncoes","checked":17,"failed":[]}
+{"at":"2026-11-17T10:57:30Z","step":"promote","subject":"introducao-a-programacao","topic":"ponteiros","checked":32,"failed":[]}
+{"at":"2026-11-17T10:57:30Z","step":"promote","subject":"estruturas-de-dados","topic":"filas-e-deques","checked":22,"failed":[]}
+{"at":"2026-11-17T10:57:30Z","step":"promote","subject":"banco-de-dados","topic":"sql-juncoes","checked":24,"failed":[]}

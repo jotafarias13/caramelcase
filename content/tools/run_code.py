@@ -8,8 +8,10 @@ What happens to a question depends on its code_check:
 - skip, or no code: nothing runs.
 
 "Runs" means: it compiles (C, with warnings as errors and the sanitizers
-on), exits with code 0 inside the timeout, and prints the same thing on a
-second run, so the output cannot depend on chance, time or addresses.
+on), exits with code 0 inside the timeout, and prints the same thing on
+every run, so the output cannot depend on chance, time or addresses. The
+code runs settings.code_run_count times, and each Python run has another
+hash seed: that is what changes the order of a set of strings.
 
 Python runs in the interpreter the tools run in, C is compiled with the
 compiler in settings, and SQL runs in an empty SQLite database
@@ -64,15 +66,17 @@ class CodeFailure:
 def run_code(
     code: str, language: CodeLanguage, settings: Settings
 ) -> RunOutcome:
-    """Run the code twice in an empty directory. It passes when it exits
-    with code 0 both times and prints the same thing.
+    """Run the code several times in an empty directory. It passes when
+    every run exits with code 0 and prints the same thing.
     """
     with tempfile.TemporaryDirectory(prefix="run-code-") as directory:
         workdir = Path(directory)
         if language is CodeLanguage.PYTHON:
             (workdir / "question.py").write_text(code, encoding="utf-8")
-            # -I keeps the user's environment and site packages out.
-            command = [sys.executable, "-I", "-X", "utf8", "question.py"]
+            # -s and -P keep the user's site packages and the file's
+            # directory out of the imports. -I would do the same, but it
+            # also ignores PYTHONHASHSEED, which every run sets.
+            command = [sys.executable, "-s", "-P", "-X", "utf8", "question.py"]
         elif language is CodeLanguage.SQL:
             (workdir / "question.sql").write_text(code, encoding="utf-8")
             command = [
@@ -104,21 +108,22 @@ def run_code(
                 )
             command = ["./question"]
 
-        first = _execute(command, workdir, settings)
+        first = _execute(command, workdir, settings, hash_seed=1)
         if not first.ok:
             return first
-        second = _execute(command, workdir, settings)
-        if not second.ok or second.output != first.output:
-            return RunOutcome(
-                False,
-                first.output,
-                "it is not deterministic: a second run "
-                + (
-                    f"printed {second.output!r} after {first.output!r}"
-                    if second.ok
-                    else f"failed: {second.detail}"
-                ),
-            )
+        for hash_seed in range(2, settings.code_run_count + 1):
+            again = _execute(command, workdir, settings, hash_seed=hash_seed)
+            if not again.ok or again.output != first.output:
+                return RunOutcome(
+                    False,
+                    first.output,
+                    "it is not deterministic: another run "
+                    + (
+                        f"printed {again.output!r} after {first.output!r}"
+                        if again.ok
+                        else f"failed: {again.detail}"
+                    ),
+                )
         return first
 
 
@@ -128,6 +133,7 @@ def _execute(
     settings: Settings,
     *,
     limit_output: bool = True,
+    hash_seed: int = 1,
 ) -> RunOutcome:
     """Run one command in workdir and collect what it printed."""
     max_bytes = settings.code_run_max_output_bytes
@@ -145,7 +151,7 @@ def _execute(
             completed = subprocess.run(
                 command,
                 cwd=workdir,
-                env=_environment(),
+                env=_environment(hash_seed),
                 stdin=subprocess.DEVNULL,
                 stdout=output,
                 stderr=errors,
@@ -185,14 +191,17 @@ def _summary(error_text: str) -> str:
     return " | ".join(naming_the_error or lines[-_ERROR_LINES_SHOWN:])
 
 
-def _environment() -> dict[str, str]:
+def _environment(hash_seed: int) -> dict[str, str]:
     """The environment of a run: where programs are, and nothing of the
     user's. Leak reports are off because they exist on Linux only, and a
-    question must pass or fail the same way everywhere.
+    question must pass or fail the same way everywhere. The hash seed is
+    read by Python only: with a seed of its own, each run of a question
+    puts a set of strings in another order.
     """
     environment = {
         "PATH": os.environ.get("PATH", ""),
         "ASAN_OPTIONS": "detect_leaks=0",
+        "PYTHONHASHSEED": str(hash_seed),
     }
     if "TMPDIR" in os.environ:
         environment["TMPDIR"] = os.environ["TMPDIR"]

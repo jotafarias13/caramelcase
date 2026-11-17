@@ -63,9 +63,11 @@ def build_report(
         _totals_table(docs, subjects),
         "The target spread is 25% level 1 to 2, 50% level 3 and 25% level "
         '4 to 5. "Code run" counts the questions whose code the run-code '
-        'tool executed and checked. "Key is longest" is the share of '
-        "questions whose correct option is the longest of the four in "
-        "Portuguese: near 25% when length does not give the answer away.",
+        'tool executed and checked. "Key is longest" looks only at the '
+        "questions in which one option is longer than the other three, in "
+        "Portuguese, and gives the share of them whose longest option is "
+        "the correct one: near 25% when length does not give the answer "
+        "away.",
     ]
     for subject in subjects:
         parts += [
@@ -111,13 +113,17 @@ def _totals_table(
 
 
 def _totals_row(name: str, docs: Sequence[QuestionDoc]) -> list[str]:
+    with_a_longest = [doc for doc in docs if _has_a_longest_option(doc)]
     return [
         name,
         str(len(docs)),
         *_band_shares(docs),
         str(sum(1 for doc in docs if doc.code() is not None)),
         str(sum(1 for doc in docs if has_code_to_run(doc))),
-        _share(sum(1 for doc in docs if _key_is_longest(doc)), len(docs)),
+        _share(
+            sum(1 for doc in with_a_longest if _key_is_longest(doc)),
+            len(with_a_longest),
+        ),
         str(sum(1 for doc in docs if doc.verification.human_checked)),
     ]
 
@@ -156,6 +162,16 @@ def _band_shares(docs: Sequence[QuestionDoc]) -> list[str]:
         )
         for _, levels in BANDS
     ]
+
+
+def _has_a_longest_option(doc: QuestionDoc) -> bool:
+    """True when one option is longer than the other three. Options such
+    as 12, 23, 24 and 31 have no longest one.
+    """
+    lengths = [
+        len(option.text) for option in doc.locales[Locale.PT_BR].options
+    ]
+    return lengths.count(max(lengths)) == 1
 
 
 def _key_is_longest(doc: QuestionDoc) -> bool:

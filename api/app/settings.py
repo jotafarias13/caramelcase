@@ -80,6 +80,10 @@ class Settings(BaseSettings):
     code_run_timeout_seconds: float = 10.0
     # Bytes of output a question's code may print before it is stopped.
     code_run_max_output_bytes: int = 100_000
+    # How many times a question's code runs. Every run must print the same
+    # thing. Run number n gives Python the hash seed n, so the order of a
+    # set of strings changes between runs, the same way on every machine.
+    code_run_count: int = 5
     code_run_c_compiler: str = "cc"
     # A warning fails the compile. The sanitizers stop a C snippet that
     # reads out of bounds, uses freed memory or overflows, instead of
@@ -91,9 +95,13 @@ class Settings(BaseSettings):
         "-fsanitize=address,undefined",
         "-fno-sanitize-recover=all",
     )
-    # Two questions of a subject are near-duplicates when their stems, and
-    # their code, are at least this similar (0 to 1).
+    # Two questions of a subject are near-duplicates when their stems are
+    # at least this similar (0 to 1) and, if they have code, so is the
+    # code, against its own number. Code has the higher bar because short
+    # programs share their frame (include and main, CREATE TABLE): in the
+    # pilot, unrelated C programs were as similar as 0.88.
     dedupe_similarity: float = 0.85
+    dedupe_code_similarity: float = 0.92
 
     # ---- practice sessions and question selection ----
     session_length: int = 10

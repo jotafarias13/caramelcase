@@ -4,9 +4,10 @@ run-code starts this file as its own process: python sql_runner.py
 <file>. It imports nothing from the project.
 
 Each statement runs in order. A statement that returns rows prints one
-line per row, the columns separated by "|" and NULL written as NULL, the
-way the sqlite3 shell does. Foreign keys are enforced, as in the SQL the
-course teaches. An error stops the run with exit code 1.
+line per row, the columns separated by "|" as in the sqlite3 shell, and
+NULL written as NULL, where the shell would print nothing. Foreign keys
+are enforced, as in the SQL the course teaches. An error stops the run
+with exit code 1.
 """
 
 import sqlite3

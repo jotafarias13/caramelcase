@@ -27,7 +27,7 @@ from app.services.question_files import (
     unverified_problems,
     write_question_file,
 )
-from app.settings import get_settings
+from app.settings import Settings, get_settings
 from content.tools import common, run_log
 from content.tools.dedupe import find_duplicates
 
@@ -52,7 +52,7 @@ def promote(
     question_file: Path,
     bank: Path,
     catalog: Catalog,
-    dedupe_threshold: float,
+    settings: Settings,
     *,
     log: Path | None = None,
 ) -> PromoteResult:
@@ -98,7 +98,7 @@ def promote(
     for duplicate in find_duplicates(
         [line.doc for line in candidates],
         [line.doc for line in bank_lines],
-        dedupe_threshold,
+        settings,
     ):
         reasons[line_number_of[duplicate.question_id]] = [
             f"near-duplicate of {duplicate.of_id} "
@@ -176,7 +176,7 @@ def command(
             question_file,
             common.bank_dir(),
             common.catalog(),
-            get_settings().dedupe_similarity,
+            get_settings(),
             log=run_log.pipeline_log_path() if log else None,
         )
         for drop in result.dropped:

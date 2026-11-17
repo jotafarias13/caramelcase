@@ -14,9 +14,11 @@ If the task message lists failed questions instead, go to [Repairing](#repairing
 
 2. **Plan the set.** Write a list with one line per question: the concept it tests, its level and whether it has code. Follow [Difficulty](#difficulty) for the levels.
 
-   Done when the list has the number of questions asked for, every concept in `covers` appears at least once, no two lines test the same fact, and the levels are 25% level 1 or 2, 50% level 3 and 25% level 4 or 5.
+   Done when the list has the number of questions asked for, every concept in `covers` appears at least once, no two lines test the same fact, and the levels are as near as the number allows to 25% level 1 or 2, 50% level 3 and 25% level 4 or 5.
 
 3. **Write the questions.** For each line of the plan, write the question in Portuguese, then in English, following [The line](#the-line) and [Writing rules](#writing-rules). Number the ids from the first id number, without gaps.
+
+   Build the file with a short script kept outside the repository, in which each question is a dict written out with `json.dumps(question, ensure_ascii=False)`. A line typed by hand goes wrong at the quotes and line breaks of its code.
 
    Done when the file has one line per planned question.
 
@@ -32,7 +34,7 @@ If the task message lists failed questions instead, go to [Repairing](#repairing
 
    Done when each command exits with code 0.
 
-5. **Solve your own questions.** Read each finished question as a student who sees only the stem, the code and the four options. Answer it without looking at the key, and try to defend each wrong option.
+5. **Solve your own questions.** Read each finished question as a student who sees only the stem, the code and the four options. Answer it without looking at the key, and try to defend each wrong option. `uv run --project api python -m content.tools strip-keys <file>` writes that view, without keys, reasons or explanations, to `<topic>.stripped.jsonl` beside the file.
 
    Done when, for every question, your answer is the key and you could not defend any other option. Rewrite a question that fails, then repeat step 4.
 
@@ -117,7 +119,7 @@ Use code when the question is about what code does. It goes in `code`, identical
 
 - The language is the topic's `code_language`: `python`, `c` or `sql`.
 - At most 15 lines of at most 80 characters, indented with spaces.
-- Identifiers are in Portuguese without accents (`pilha`, `tamanho`, `proximo`). The code has no comments and prints only values, because it cannot be translated.
+- Identifiers are in Portuguese without accents (`pilha`, `tamanho`, `proximo`), and the English text names them as the code does. The code has no comments and prints only values that read the same in both languages (numbers, proper names, codes), because it cannot be translated.
 - It is deterministic: it reads no input, no file, no clock and no random number, and prints no address.
 
 `code_check` says how the pipeline checks the code. Prefer `output`, then `runs`.
@@ -128,11 +130,13 @@ Use code when the question is about what code does. It goes in `code`, identical
 | `runs` | The code is complete but the question is about something else, such as its complexity | Runs the code, which must finish without an error |
 | `skip` | The code must not run: a fragment, or code that fails on purpose (a compile error, undefined behaviour) | Nothing. Only the blind solver checks the question |
 
+A question about code whose behaviour is undefined (an uninitialized or null pointer, a read out of bounds) never asks what the code prints: it asks which statement about the code is correct, with `skip`.
+
 For `output` and `runs`, the code is a complete program:
 
 - **Python** runs as a script on Python 3.12, with the standard library only.
 - **C** is a full program with its `#include` lines and `main`. It is compiled as C11 with `-Wall -Werror` and the address and undefined-behaviour sanitizers, so a warning, a read out of bounds, a use after `free` or a signed overflow fails the run.
-- **SQL** runs in an empty SQLite database with foreign keys enforced. The code creates its tables and inserts its rows before it queries them, so the student sees the data. Each row of a result is printed on one line, the columns separated by `|`, and NULL as `NULL`. Write standard SQL that SQLite accepts; a question about a feature SQLite lacks, such as stored procedures, uses `skip`.
+- **SQL** runs in an empty SQLite database with foreign keys enforced. The code creates its tables and inserts its rows before it queries them, so the student sees the data. Each row of a result is printed on one line, the columns separated by `|`, and NULL as `NULL`; a stem whose answer has more than one column says so, since the student has not seen that format. A result without rows prints nothing, so it cannot be the answer of an `output` question. Write standard SQL that SQLite accepts; a question about a feature SQLite lacks, such as stored procedures, uses `skip`.
 
 ## Repairing
 

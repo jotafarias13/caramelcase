@@ -160,15 +160,15 @@ The owner saw these and did not object.
 - **Two tools beyond the plan's five: `check-blind` and `promote`.** Without the first, someone edits `blind_key` into 400 lines by hand; without the second, someone decides by hand which lines go to the bank. Both are places where a disagreement could be waved through.
 - **Questions in the pipeline live in `content/work/`, which is not committed.** `content/bank/` holds only questions that passed everything, so the content test also requires `blind_agrees` true and, where code is run, `code_ran` true. Content generation in the background can never break `make test`.
 - **`content/pipeline-log.jsonl` is committed.** A tool run with `--log` appends one line per question file: the step, how many questions it checked and the ids that failed. The report's failure rate is failed checks over checks, so a repaired question counts once per check. Without `--log` nothing is recorded: that is for trying things.
-- **`run-code` runs everything twice** and fails code whose output changes: that is the check for "deterministic", and it catches random numbers, clocks, printed addresses and the order of a Python set of strings.
+- **`run-code` runs everything more than once** and fails code whose output changes: that is the check for "deterministic", and it catches random numbers, clocks, printed addresses and the order of a Python set of strings. Twice at first; five times, each run with its own hash seed, since milestone 4 (below).
 - **C is compiled as C11 with `-Wall -Werror` and the address and undefined-behaviour sanitizers.** A read out of bounds or a use after `free` would otherwise print an arbitrary value and pass. Leak detection is off, because it exists on Linux only and a question must pass or fail the same way on every machine. Both checked: clang on macOS and gcc 13 on Linux.
 - **SQL runs on SQLite**, in memory, with foreign keys enforced, through Python's `sqlite3`. A row prints as its columns joined by `|`, NULL as `NULL`. A question about a feature SQLite lacks uses `skip`.
-- **Python runs in the tools' own interpreter (3.12)** with `-I`.
+- **Python runs in the tools' own interpreter (3.12)** with `-I`; with `-s -P` since milestone 4 (below).
 - **Each run has an empty temporary directory, no input, nothing of the user's environment but `PATH` and `TMPDIR`, a timeout of 10 seconds and 100 kB of output.** It is not a sandbox: generated code runs with the user's rights. The tests in CI run fixed snippets only; nothing in CI executes the bank's code.
 - **Output is compared ignoring whitespace around it and at the end of each line.**
-- **`dedupe` compares the Portuguese stem and the code.** Many questions share a stem such as "O que este programa imprime?", so two questions with code are duplicates only when the code is nearly the same too. Similarity is `difflib`'s ratio, at 0.85, a setting; stems are compared without case, accents or punctuation. The later question of a pair is the one flagged.
+- **`dedupe` compares the Portuguese stem and the code.** Many questions share a stem such as "O que este programa imprime?", so two questions with code are duplicates only when the code is nearly the same too. Similarity is `difflib`'s ratio, at 0.85, a setting; stems are compared without case, accents or punctuation. The later question of a pair is the one flagged. Code has its own threshold, 0.92, since milestone 4 (below).
 - **The blind solver sees both languages and answers once**, by reasoning, without running code or opening any other file. It answers null when the two languages differ in meaning.
-- **The report adds one number to what the spec asks**: the share of questions whose correct option is the longest of the four, which should be near 25%.
+- **The report adds one number to what the spec asks**: the share of questions whose correct option is the longest of the four, which should be near 25%. Since milestone 4 it is counted over the questions that have a longest option (below).
 
 ### The importer
 
@@ -185,3 +185,39 @@ The owner saw these and did not object.
 - **The tools' tests are in `api/tests/content_tools/`**, and `make lint`, `make typecheck` and `make test` cover `content/tools/` with the API's rules (`content/ruff.toml` extends the API's; pytest gets the repository root on its path; mypy lists the directory).
 - **The run-code tests need a C compiler as `cc`** and fail without one, rather than skip. GitHub's Ubuntu runners have gcc. The tool tests were run on Ubuntu's gcc 13 in a container, but CI itself is still unobserved: nothing has been pushed.
 - **Typer options use `Annotated`**, in the tools and in `app/cli.py`: the default-value style fails ruff's B008 for a `Path`.
+
+## Milestone 4 · Launch content
+
+### The pilot
+
+- **Pilot topics: `ponteiros`, `filas-e-deques` and `sql-juncoes`**, one per code language, so that the C, Python and SQL runners each met real questions. `pilhas` was left out on purpose: the example line of `prompts/generate.md` is a `pilhas` question, and a pilot on the prompt's own example would say little about the other 49 topics.
+- **32, 22 and 24 questions**: each subject's 400 over its number of topics (31, 21 and 22), plus a small margin for drops. The pilot's questions count toward the 400, and the fan-out keeps these sizes per topic unless the owner changes them: 416, 418 and 432 questions before drops.
+- **All 78 passed every step in the first round.** The repair round and the drop path have therefore not run on real questions; their tools are covered by unit tests only.
+- **The blind solver was tested with a planted file**, because a clean sweep says little about a checker. Six pilot questions were mixed with six flawed ones: two right options (twice), no right option, Portuguese and English asking different things, output that depends on the order of a set, and undefined behaviour. A fresh solver gave the six sound questions their keys and answered `null` on the six flawed ones, each with the right reason. The file is not kept.
+- **During a blind solve, no file with the keys can be opened**: `chmod 000` on the work file, and on whatever script the generator left in a scratch directory, until the answers are written. The solver's task message also says that the stripped file and the prompt are the only files it opens, the reading `CLAUDE.md` asks for before other work included: `CLAUDE.md`'s own rule, that a blind solver has seen only the stripped file, wins. `content/README.md` has both steps.
+- **Milestone 4 is committed once per run**, not once for the milestone. `content/README.md` asks for `bank/`, the log and the report to be committed together after each run, and the content is generated in the background while later milestones are committed. The pilot is the first run.
+
+### What the pilot changed in the tools
+
+- **`run-code` runs code five times, each run with its own fixed hash seed** (`code_run_count`; run n has `PYTHONHASHSEED=n`). Two runs with random seeds printed a set of four strings in the same order 9 times in 200. That let such code pass, and it made a test of milestone 3 fail about one run in twenty on `main`. With a set of two strings it was every second time. Fixed seeds also make the check repeatable: a question passes or fails the same way on every run and machine. Python now runs with `-s -P`, because `-I` ignores the seed; the environment of a run was already empty. What is left: a set of two strings keeps its order under all five seeds for about 1 pair of strings in 16, and there the prompt's rule and the blind solver are the guard.
+- **`dedupe` has a second threshold for code, 0.92** (`dedupe_code_similarity`); stems stay at 0.85. Short programs of one language share their frame: the include and `main` of C, the `CREATE TABLE` of SQL. In the pilot, unrelated C programs were as similar as 0.88, ten pairs in the `ponteiros` file alone were above 0.80, and the generator renamed variables in one program only to get under 0.85. A program with one number changed is at 0.98 or above and is still caught. With 13 C topics in one subject, the old number would have flagged sound questions in every run.
+- **"Key is longest" in the report counts only the questions that have a longest option.** Two thirds of the pilot's questions have no single longest option, mostly because their options are numbers, which put the old figure at 5% and made its "near 25%" meaningless. Counted over the 25 questions with a longest option it is 16%.
+
+### What the pilot changed in the prompt
+
+`prompts/generate.md` now says what the three generators had to work out alone:
+
+- the level split is as near to 25, 50 and 25% as the number allows, since 22 questions cannot meet it exactly;
+- the file is built by a short script with `json.dumps`, kept outside the repository: all three did that to escape the code correctly;
+- `strip-keys` gives the student's view for the self-solve;
+- the English text names identifiers as the code does, and the code prints only values that read the same in both languages;
+- code with undefined behaviour is asked as "which statement is correct", with `skip`, never as "what does it print", which the blind solver's rules fail;
+- in SQL, a stem whose answer has more than one column says how the columns are separated, and an empty result cannot be the answer of an `output` question.
+
+### Open, not decided
+
+- **SQL questions and the one-line output.** `output` compares what the code prints with one option, and a join returns a table. The generator used `SELECT COUNT(*)` in 12 of its 17 code questions, with a sentence in the stem that explains it, although COUNT belongs to a later topic. Every key is checked by execution that way. The alternative is a fourth `code_check` that compares the number of rows a query returns, so that a question shows the query as it would be written. Kept as it is until the owner has read the samples.
+- **Topological sort in `filas-e-deques`.** The syllabus lists it among the uses of a queue, so the topic has it (3 of 22 questions), but it needs the vocabulary of directed graphs, which no topic of the subject teaches. Kept as the syllabus has it.
+- **Overlap between neighbouring topics.** A generator reads the stems of its own topic in the bank, and `dedupe` compares text, not concepts. `ponteiros` used arrays in eight questions, which `vetores` may ask again in other words. Unknown until neighbouring topics exist.
+- **Every generator reads the spec and the plan first**, as `CLAUDE.md` asks of any work: about 45 kB with nothing on writing questions, some 5% of a generator's work. An exemption for content subagents is the owner's to add to `CLAUDE.md`.
+- **No tool checks the level split or the balance of keys within a file.** The generators counted both with their own scripts and met them (each key correct 8, 8, 8, 8 times; 6, 6, 5, 5; 6, 6, 6, 6). The report shows the levels after the fact.

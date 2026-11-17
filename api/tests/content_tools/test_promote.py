@@ -19,7 +19,7 @@ from tests.support.questions import (
     write_lines,
 )
 
-THRESHOLD = Settings().dedupe_similarity
+SETTINGS = Settings()
 SUBJECT = "estruturas-de-dados"
 
 
@@ -30,7 +30,7 @@ def _id(number: int, topic: str = "pilhas") -> str:
 def _promote(
     work_file: Path, bank: Path, log: Path | None = None
 ) -> PromoteResult:
-    return promote(work_file, bank, the_catalog(), THRESHOLD, log=log)
+    return promote(work_file, bank, the_catalog(), SETTINGS, log=log)
 
 
 def test_passing_questions_move_to_the_bank_and_the_work_file_goes(
