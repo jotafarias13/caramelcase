@@ -1,17 +1,29 @@
 # The subject catalog, in the order subjects are shown and generated.
 #
-# `python -m app.cli seed` copies it to the subjects table: a new subject
-# is created as a draft, an existing one gets its names, badge and order
-# updated, and its status is left alone.
-#
 #   slug          stable id; the first part of every question id
 #   name_pt/_en   the subject's name in each language
 #   short_pt/_en  the label on the subject's badge ("ed" is shown as "ed/")
 #   typical_year  a rough guide for Brazilian computing degrees, to be
 #                 checked against the real curriculum
 #   launch        true for the three subjects V1 launches with
+#   topics        the subject's topics, in the order they are shown; the
+#                 launch subjects have them, the others get them when
+#                 their questions are written
 #
-# Topics are added under each subject in milestone 3.
+# `python -m app.cli seed` copies the subjects and topics to the database:
+# a new one is created (a subject as a draft), an existing one gets its
+# names, badge and order updated, and a subject's status is left alone.
+#
+# A topic:
+#
+#   slug           stable id; the second part of every question id and the
+#                  name of the topic's file, bank/<subject>/<topic>.jsonl
+#   name_pt/_en    the topic's name in each language
+#   code_language  python, c or sql: the language of the code in the
+#                  topic's questions
+#   covers         what the topic covers, taken from the course syllabus;
+#                  it tells a question writer where the topic starts and
+#                  ends
 
 subjects:
   - slug: introducao-a-programacao
@@ -21,6 +33,121 @@ subjects:
     short_en: prog
     typical_year: "1"
     launch: true
+    topics:
+      - slug: introducao-ao-computador
+        name_pt: Introdução ao computador
+        name_en: Introduction to the computer
+        code_language: c
+        covers: >-
+          Componentes de um computador (processador, memória, entrada e
+          saída); representação binária de dados; o que são algoritmo e
+          programa; linguagens de alto e de baixo nível.
+
+      - slug: ferramentas-de-programacao
+        name_pt: Ferramentas de programação
+        name_en: Programming tools
+        code_language: c
+        covers: >-
+          Editor, compilador, ligador e depurador; etapas da compilação de
+          um programa em C (pré-processamento, compilação, ligação); erros
+          de compilação, de ligação e de execução; estrutura mínima de um
+          programa em C.
+
+      - slug: variaveis-e-tipos
+        name_pt: Variáveis e tipos de dados
+        name_en: Variables and data types
+        code_language: c
+        covers: >-
+          Declaração e inicialização de variáveis; tipos primitivos de C
+          (int, char, float, double); constantes; conversões de tipo;
+          entrada e saída com printf e scanf.
+
+      - slug: operadores-e-expressoes
+        name_pt: Operadores e expressões
+        name_en: Operators and expressions
+        code_language: c
+        covers: >-
+          Operadores aritméticos, relacionais, lógicos, de atribuição, de
+          incremento e de decremento; precedência e associatividade; divisão
+          inteira e resto; avaliação em curto-circuito.
+
+      - slug: estruturas-condicionais
+        name_pt: Estruturas condicionais
+        name_en: Conditionals
+        code_language: c
+        covers: >-
+          if, else e else if encadeado; switch e break; operador ternário;
+          condições compostas.
+
+      - slug: estruturas-de-repeticao
+        name_pt: Estruturas de repetição
+        name_en: Loops
+        code_language: c
+        covers: >-
+          while, do-while e for; break e continue; laços aninhados;
+          contadores e acumuladores; número de iterações.
+
+      - slug: funcoes
+        name_pt: Funções
+        name_en: Functions
+        code_language: c
+        covers: >-
+          Definição, protótipo e chamada; parâmetros e valor de retorno;
+          passagem por valor; escopo e tempo de vida das variáveis (locais,
+          globais, static); recursão simples.
+
+      - slug: ponteiros
+        name_pt: Ponteiros
+        name_en: Pointers
+        code_language: c
+        covers: >-
+          Endereços e os operadores & e *; declaração e desreferência;
+          ponteiro nulo; passagem por referência com ponteiros; aritmética
+          de ponteiros; ponteiro para ponteiro.
+
+      - slug: vetores
+        name_pt: Vetores
+        name_en: Arrays
+        code_language: c
+        covers: >-
+          Declaração, inicialização e acesso por índice; percurso com laços;
+          limites do vetor; relação entre vetores e ponteiros; vetores como
+          parâmetros de funções.
+
+      - slug: matrizes
+        name_pt: Matrizes
+        name_en: Matrices
+        code_language: c
+        covers: >-
+          Vetores de duas dimensões: declaração, inicialização e percurso
+          por linhas e por colunas; matrizes como parâmetros de funções.
+
+      - slug: strings
+        name_pt: Strings
+        name_en: Strings
+        code_language: c
+        covers: >-
+          Vetores de char terminados em '\0'; literais; leitura e escrita;
+          funções de string.h (strlen, strcpy, strcat, strcmp); percurso
+          caractere a caractere.
+
+      - slug: registros
+        name_pt: Registros
+        name_en: Structs
+        code_language: c
+        covers: >-
+          struct: definição, declaração, inicialização e acesso aos campos;
+          typedef; registros aninhados; vetores de registros; ponteiros para
+          registros e o operador ->; registros como parâmetros.
+
+      - slug: enumeracoes-e-unioes
+        name_pt: Enumerações e uniões
+        name_en: Enums and unions
+        code_language: c
+        covers: >-
+          enum: constantes nomeadas e seus valores inteiros; union: campos
+          que compartilham a mesma memória e o tamanho de uma união;
+          diferenças entre struct e union.
 
   - slug: estruturas-de-dados
     name_pt: Estruturas de Dados
@@ -29,6 +156,180 @@ subjects:
     short_en: ds
     typical_year: 1 to 2
     launch: true
+    topics:
+      - slug: analise-de-complexidade
+        name_pt: Análise de complexidade
+        name_en: Complexity analysis
+        code_language: python
+        covers: >-
+          O que se mede ao analisar um algoritmo: operações em função do
+          tamanho da entrada; contagem de passos em laços simples e
+          aninhados; pior caso, melhor caso e caso médio; algoritmos ótimos;
+          complexidade de um problema e complexidade de um algoritmo.
+
+      - slug: notacoes-assintoticas
+        name_pt: Notações assintóticas
+        name_en: Asymptotic notation
+        code_language: python
+        covers: >-
+          Notações O, Ω e Θ, e também o e ω: definições, uso formal e
+          informal; ordem de crescimento; comparação e classificação de
+          funções.
+
+      - slug: recursao-e-recorrencias
+        name_pt: Recursão e recorrências
+        name_en: Recursion and recurrences
+        code_language: python
+        covers: >-
+          Análise de algoritmos recursivos e iterativos; somatórios;
+          relações de recorrência e sua solução por substituição, árvore de
+          recursão e teorema mestre.
+
+      - slug: ponteiros-e-alocacao-dinamica
+        name_pt: Ponteiros e alocação dinâmica
+        name_en: Pointers and dynamic allocation
+        code_language: c
+        covers: >-
+          Tipos de dados primitivos, estáticos e dinâmicos; ponteiros em
+          estruturas de dados; malloc, calloc, realloc e free; vazamento de
+          memória e ponteiro pendente; ponteiros para registros.
+
+      - slug: listas-sequenciais
+        name_pt: Listas sequenciais
+        name_en: Sequential lists
+        code_language: python
+        covers: >-
+          Lista linear em alocação sequencial (vetor): inserção, remoção e
+          busca, e o custo de cada uma; deslocamento de elementos;
+          comparação com a alocação encadeada.
+
+      - slug: listas-encadeadas
+        name_pt: Listas encadeadas
+        name_en: Linked lists
+        code_language: c
+        covers: >-
+          Listas simplesmente encadeada, circular e duplamente encadeada:
+          nós e ponteiros, inserção, remoção e percurso; lista de espaço
+          disponível (LED); combinação de listas.
+
+      - slug: pilhas
+        name_pt: Pilhas
+        name_en: Stacks
+        code_language: python
+        covers: >-
+          Política LIFO; operações de empilhar e desempilhar; implementações
+          sequencial e encadeada; aplicações: chamadas de função, avaliação
+          de expressões, parênteses balanceados.
+
+      - slug: filas-e-deques
+        name_pt: Filas e deques
+        name_en: Queues and deques
+        code_language: python
+        covers: >-
+          Política FIFO; fila sequencial circular e fila encadeada; deque e
+          suas operações nas duas pontas; aplicações, entre elas a ordenação
+          topológica.
+
+      - slug: busca-linear-e-binaria
+        name_pt: Busca linear e binária
+        name_en: Linear and binary search
+        code_language: python
+        covers: >-
+          Busca linear e busca binária em listas: funcionamento,
+          pré-condições, número de comparações, análise de complexidade e
+          comparação entre as duas.
+
+      - slug: ordenacao-elementar
+        name_pt: Ordenação elementar
+        name_en: Elementary sorting
+        code_language: python
+        covers: >-
+          Ordenação por inserção, por seleção e por troca (bolha):
+          funcionamento passo a passo, número de comparações e de trocas,
+          estabilidade, melhor e pior caso.
+
+      - slug: ordenacao-eficiente
+        name_pt: Ordenação eficiente
+        name_en: Efficient sorting
+        code_language: python
+        covers: >-
+          Quicksort e mergesort; ordenação por distribuição (contagem,
+          radix, baldes); limite inferior da ordenação por comparação;
+          comparação dos métodos: complexidade, estabilidade e uso de
+          memória.
+
+      - slug: tabelas-de-dispersao
+        name_pt: Tabelas de dispersão
+        name_en: Hash tables
+        code_language: python
+        covers: >-
+          Princípio de funcionamento; funções de dispersão; colisões por
+          encadeamento exterior e interior; endereçamento aberto com
+          tentativa linear, tentativa quadrática e dispersão dupla; fator de
+          carga; tabela de dimensão dinâmica.
+
+      - slug: arvores-binarias
+        name_pt: Árvores binárias
+        name_en: Binary trees
+        code_language: python
+        covers: >-
+          Conceitos de árvores (raiz, folha, nível, altura, grau); árvores
+          genéricas e sua implementação; árvores binárias: tipos,
+          propriedades e percursos em pré-ordem, em ordem, em pós-ordem e em
+          nível.
+
+      - slug: arvores-binarias-de-busca
+        name_pt: Árvores binárias de busca
+        name_en: Binary search trees
+        code_language: python
+        covers: >-
+          Propriedade de busca; busca, inserção e remoção; mínimo, máximo e
+          sucessor; altura e complexidade no melhor e no pior caso;
+          conjuntos, dicionários e multiconjuntos implementados com árvores
+          de busca.
+
+      - slug: arvores-balanceadas
+        name_pt: Árvores balanceadas
+        name_en: Balanced trees
+        code_language: python
+        covers: >-
+          Árvores AVL e rubro-negras: propriedades, fator de balanceamento,
+          rotações e altura; estruturas auto-ajustáveis (árvore splay).
+
+      - slug: arvores-b-e-digitais
+        name_pt: Árvores B e árvores digitais
+        name_en: B-trees and tries
+        code_language: python
+        covers: >-
+          Árvore B: ordem, propriedades, busca e inserção com divisão de nó;
+          árvores digitais (trie, Patricia): busca e inserção de chaves por
+          prefixo.
+
+      - slug: heaps
+        name_pt: Heaps e listas de prioridade
+        name_en: Heaps and priority queues
+        code_language: python
+        covers: >-
+          Lista de prioridades; heap binária em vetor: propriedade de heap,
+          subir e descer, inserção, remoção do máximo ou do mínimo e
+          construção; heapsort.
+
+      - slug: conjuntos-disjuntos
+        name_pt: Conjuntos disjuntos
+        name_en: Disjoint sets
+        code_language: python
+        covers: >-
+          Union-Find: operações de busca e de união; floresta de conjuntos,
+          união por posto e compressão de caminho; análise amortizada.
+
+      - slug: casamento-de-cadeias
+        name_pt: Casamento de cadeias
+        name_en: String matching
+        code_language: python
+        covers: >-
+          Busca de um padrão em um texto: algoritmo ingênuo, KMP (função de
+          prefixo), Boyer-Moore e Rabin-Karp; número de comparações e
+          complexidade.
 
   - slug: banco-de-dados
     name_pt: Banco de Dados
@@ -37,6 +338,165 @@ subjects:
     short_en: db
     typical_year: "2"
     launch: true
+    topics:
+      - slug: conceitos-basicos
+        name_pt: Conceitos básicos
+        name_en: Basic concepts
+        code_language: sql
+        covers: >-
+          Dado, informação e banco de dados; sistema de gerência de banco de
+          dados (SGBD) e suas funções; arquitetura em três níveis e
+          independência de dados; modelos de dados; usuários de um banco de
+          dados.
+
+      - slug: modelo-entidade-relacionamento
+        name_pt: Modelo entidade-relacionamento
+        name_en: Entity-relationship model
+        code_language: sql
+        covers: >-
+          Entidades; atributos simples, compostos, multivalorados, derivados
+          e chave; relacionamentos, cardinalidade e participação; entidade
+          fraca; generalização e especialização; leitura de diagramas ER
+          descritos em texto.
+
+      - slug: modelo-relacional
+        name_pt: Modelo relacional
+        name_en: Relational model
+        code_language: sql
+        covers: >-
+          Relação, tupla, atributo e domínio; chaves candidata, primária e
+          estrangeira; restrições de integridade; mapeamento do modelo ER
+          para o relacional.
+
+      - slug: algebra-relacional
+        name_pt: Álgebra relacional
+        name_en: Relational algebra
+        code_language: sql
+        covers: >-
+          Seleção, projeção, renomeação, união, interseção, diferença,
+          produto cartesiano, junções e divisão; equivalência entre
+          expressões; correspondência com SQL.
+
+      - slug: normalizacao
+        name_pt: Normalização
+        name_en: Normalization
+        code_language: sql
+        covers: >-
+          Dependências funcionais; anomalias de inserção, de atualização e
+          de remoção; primeira, segunda e terceira formas normais e a forma
+          normal de Boyce-Codd; decomposição.
+
+      - slug: sql-ddl
+        name_pt: "SQL: definição de dados"
+        name_en: "SQL: data definition"
+        code_language: sql
+        covers: >-
+          Histórico e padrões da linguagem SQL; CREATE, ALTER e DROP TABLE;
+          tipos de dados; restrições PRIMARY KEY, FOREIGN KEY, UNIQUE, NOT
+          NULL, CHECK e DEFAULT; ações referenciais.
+
+      - slug: sql-dml
+        name_pt: "SQL: inserção, atualização e remoção"
+        name_en: "SQL: insert, update and delete"
+        code_language: sql
+        covers: >-
+          INSERT, UPDATE e DELETE; efeito da cláusula WHERE; violação de
+          restrições; valores NULL e DEFAULT.
+
+      - slug: sql-consultas
+        name_pt: "SQL: consultas básicas"
+        name_en: "SQL: basic queries"
+        code_language: sql
+        covers: >-
+          SELECT, FROM e WHERE; operadores de comparação, LIKE, IN, BETWEEN
+          e IS NULL; lógica de três valores; DISTINCT; ORDER BY e LIMIT.
+
+      - slug: sql-juncoes
+        name_pt: "SQL: junções"
+        name_en: "SQL: joins"
+        code_language: sql
+        covers: >-
+          Junção interna, externa à esquerda, externa à direita e externa
+          completa; produto cartesiano e autojunção; condição de junção;
+          linhas sem correspondência.
+
+      - slug: sql-agregacao
+        name_pt: "SQL: agregação e agrupamento"
+        name_en: "SQL: aggregation and grouping"
+        code_language: sql
+        covers: >-
+          COUNT, SUM, AVG, MIN e MAX; GROUP BY e HAVING; agregação e valores
+          NULL; diferença entre WHERE e HAVING.
+
+      - slug: sql-subconsultas
+        name_pt: "SQL: subconsultas"
+        name_en: "SQL: subqueries"
+        code_language: sql
+        covers: >-
+          Subconsultas escalares, em FROM e em WHERE; IN, EXISTS, ANY e ALL;
+          subconsultas correlacionadas; operações de conjunto UNION,
+          INTERSECT e EXCEPT.
+
+      - slug: visoes
+        name_pt: Visões
+        name_en: Views
+        code_language: sql
+        covers: >-
+          CREATE VIEW; visões para simplificar consultas e para restringir
+          acesso; visões atualizáveis; visões materializadas.
+
+      - slug: gatilhos-e-procedimentos
+        name_pt: Gatilhos e procedimentos armazenados
+        name_en: Triggers and stored procedures
+        code_language: sql
+        covers: >-
+          Gatilhos: evento, momento (BEFORE, AFTER) e ação; usos e riscos;
+          procedimentos e funções armazenados: parâmetros, vantagens e
+          desvantagens.
+
+      - slug: armazenamento-e-indices
+        name_pt: Armazenamento e índices
+        name_en: Storage and indexes
+        code_language: sql
+        covers: >-
+          Organização de arquivos e de registros em disco; índices primário
+          e secundário, denso e esparso; árvore B+; índices por hashing;
+          quando um índice ajuda e quando atrapalha.
+
+      - slug: seguranca
+        name_pt: Segurança em banco de dados
+        name_en: Database security
+        code_language: sql
+        covers: >-
+          Autenticação e autorização; GRANT e REVOKE; papéis; visões como
+          mecanismo de segurança; injeção de SQL e como evitá-la.
+
+      - slug: transacoes-e-acid
+        name_pt: Transações e propriedades ACID
+        name_en: Transactions and ACID
+        code_language: sql
+        covers: >-
+          Conceito de transação; COMMIT e ROLLBACK; atomicidade,
+          consistência, isolamento e durabilidade; estados de uma transação;
+          recuperação após falhas.
+
+      - slug: serializacao-e-isolamento
+        name_pt: Serialização e níveis de isolamento
+        name_en: Serializability and isolation levels
+        code_language: sql
+        covers: >-
+          Escalonamentos seriais e serializáveis; serialização por conflito
+          e grafo de precedência; leitura suja, leitura não repetível e
+          fantasma; níveis de isolamento do SQL.
+
+      - slug: controle-de-concorrencia
+        name_pt: Controle de concorrência
+        name_en: Concurrency control
+        code_language: sql
+        covers: >-
+          Protocolos com base em bloqueio: bloqueios compartilhado e
+          exclusivo, bloqueio em duas fases, impasse (deadlock) e como
+          tratá-lo; protocolos com base em registro de tempo (timestamp).
 
   - slug: programacao-orientada-a-objetos
     name_pt: Programação Orientada a Objetos

@@ -1,0 +1,6 @@
+# The content tools are checked with the API's rules: make lint.
+extend = "../api/pyproject.toml"
+
+[lint.isort]
+# app is the API's package, which the tools import from api/.
+known-first-party = ["app", "content"]

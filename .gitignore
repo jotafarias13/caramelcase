@@ -18,6 +18,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Questions still in the content pipeline (content/README.md)
+content/work/
+
 # Tests
 playwright-report/
 test-results/

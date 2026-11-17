@@ -38,7 +38,8 @@ jobs:
       - name: Type check
         run: make typecheck-api
 
-      # testcontainers starts Postgres 16 on the runner's Docker.
+      # testcontainers starts Postgres 16 on the runner's Docker. The tests
+      # of content/tools compile C with the runner's cc.
       - name: Test
         run: make test-api
 

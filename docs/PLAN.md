@@ -2,7 +2,7 @@
 
 The build order for `docs/initial-spec.md`, as a checklist. Work top to bottom: the next task is the first unticked box. A milestone is done when every box under it is ticked, lint, type checks and tests pass, and it is committed.
 
-Status on 2026-11-16: milestones 1 and 2 done. Next: milestone 3, Content tooling.
+Status on 2026-11-16: milestones 1 to 3 done. Next: milestone 4, Launch content, starting with the pilot.
 
 ## Decisions
 
@@ -22,7 +22,7 @@ The changes to the spec agreed with the owner, and the defaults chosen where spe
 ## Environment
 
 - Docker Desktop must be running for `docker compose up` and for the API tests, which start their own Postgres container.
-- Installed: uv 0.8.5 with Python 3.12, Node 24, npm 11, Docker 27, gh, clang (for C snippets).
+- Installed: uv 0.8.5 with Python 3.12, Node 24, npm 11, Docker 27, gh, clang (for C snippets; `run-code` and its tests call it as `cc`).
 
 ## Milestones
 
@@ -45,16 +45,16 @@ The changes to the spec agreed with the owner, and the defaults chosen where spe
 
 ### 3. Content tooling
 
-- [ ] `QuestionDoc` validates the spec's sample line; it is defined once and used by the tools and the importer.
-- [ ] `content/catalog.yaml` lists the topics of the three launch subjects, taken from the syllabus, each with its code language.
-- [ ] `content/tools/` has validate, strip-keys, run-code (Python, C and SQL, in a subprocess with a timeout), dedupe and report, each with unit tests.
-- [ ] `content/prompts/generate.md` and `blind-solve.md` carry the spec's writing rules.
-- [ ] `python -m app.cli import-content` upserts by `external_id`, bumps `version` on a changed `content_hash` and retires missing questions; tested.
-- [ ] A content test validates every line under `content/bank/` and runs in CI.
+- [x] `QuestionDoc` validates the spec's sample line; it is defined once and used by the tools and the importer.
+- [x] `content/catalog.yaml` lists the topics of the three launch subjects, taken from the syllabus, each with its code language.
+- [x] `content/tools/` has validate, strip-keys, run-code (Python, C and SQL, in a subprocess with a timeout), dedupe and report, each with unit tests. Two more, `check-blind` and `promote`, close the pipeline (see `docs/DECISIONS.md`).
+- [x] `content/prompts/generate.md` and `blind-solve.md` carry the spec's writing rules.
+- [x] `python -m app.cli import-content` upserts by `external_id`, bumps `version` on a changed `content_hash` and retires missing questions; tested.
+- [x] A content test validates every line under `content/bank/` and runs in CI.
 
 ### 4. Launch content
 
-Runs in subagents, in the background, while milestones 5 onward proceed in the main session. Per topic: one agent generates; the tools validate, run code and dedupe; a fresh agent that sees only the stripped file blind-solves; failures get one repair attempt, then are dropped. Waves of about six agents.
+Runs in subagents, in the background, while milestones 5 onward proceed in the main session. Per topic: one agent generates; the tools validate, run code and dedupe; a fresh agent that sees only the stripped file blind-solves; failures get one repair attempt, then are dropped. Waves of about six agents. `content/README.md` has the commands, step by step.
 
 - [ ] Pilot: one topic per launch subject through the full pipeline, with `content/REPORT.md` and samples shown to the owner.
 - [ ] **Stop: the owner approves the pilot before the fan-out.**

@@ -8,7 +8,7 @@ An outline. Each section says what exists today; milestone 7 completes it with t
 | --- | --- |
 | `api/` | FastAPI app on Postgres. uv project, Python 3.12 |
 | `web/` | React single-page app. Vite, TypeScript, Tailwind, shadcn/ui |
-| `content/` | Question bank (JSONL) and the tools that check it |
+| `content/` | The catalog, the question bank (JSONL), the prompts and the tools of the content pipeline |
 | `design/` | The UI handoff: tokens, Tailwind theme, mockups, assets, copy. Read-only for the build |
 | `deploy/` | Production Dockerfiles, compose file, nginx, certbot, backup |
 | `docs/` | The spec, the plan, decisions, this file, the runbook |
@@ -34,11 +34,11 @@ To be written: production path through nginx, authentication, CSRF, rate limits,
 | `app/settings.py` | Every environment value and tunable number |
 | `app/enums.py` | The fixed vocabularies: statuses, modes, flag keys, plan keys |
 | `app/db/` | Engine and session, `base.py` (table conventions), `models/` (every table), `migrations/` (Alembic) |
-| `app/domain/` | Business rules as pure functions (milestone 5 onward) |
+| `app/domain/` | Business rules as pure functions. So far `question_doc.py`: the format of a question and its rules. The rest arrives from milestone 5 |
 | `app/routes/` | One module per API area |
 | `app/services/` | Orchestration between routes, database and domain |
 | `app/providers/` | Email, billing, ads, tutor: interface, mock, real adapter |
-| `app/cli.py` | Commands run by hand, make and cron: `python -m app.cli seed` so far |
+| `app/cli.py` | Commands run by hand, make and cron: `python -m app.cli seed` and `import-content` so far |
 
 ## Web layout
 
@@ -109,7 +109,25 @@ Every table of V1, V2 and V3 exists since milestone 2: 36 tables, defined as SQL
 ### Migrations and seeds
 
 - `alembic upgrade head` creates the schema; `alembic check` fails when a model and the migrations differ, and a test runs it. Both read the database URL from settings.
-- `python -m app.cli seed` writes the rows every environment needs: the four plans from `settings.plans`, every feature flag switched off, and the 20 subjects of `content/catalog.yaml` as drafts. Running it again overwrites plans and subject names from their sources and never changes a flag's state or a subject's status.
+- `python -m app.cli seed` writes the rows every environment needs: the four plans from `settings.plans`, every feature flag switched off, and the 20 subjects of `content/catalog.yaml` as drafts, with their topics. Running it again overwrites plans and the names of subjects and topics from their sources, and never changes a flag's state or a subject's status.
+
+## Content
+
+Questions are written as files and imported; `content/README.md` describes the files, the tools and the pipeline step by step.
+
+| Piece | Where | Role |
+| --- | --- | --- |
+| The format | `api/app/domain/question_doc.py` | `QuestionDoc`, the one definition of a line of the bank, with every format rule; `content_hash`, which says whether a question's content changed |
+| The catalog | `content/catalog.yaml`, read by `api/app/services/catalog_file.py` | Subjects and their topics; each topic has the language of its code |
+| Reading files | `api/app/services/question_files.py` | Reads question files and checks them against the catalog. `load_bank` adds what the bank promises: every question passed the pipeline |
+| The tools | `content/tools/` | `python -m content.tools`: validate, run-code, dedupe, strip-keys, check-blind, promote, report. They import the three modules above from `api/`, so the tools and the importer cannot disagree about a file |
+| The importer | `api/app/services/content_import.py` | `python -m app.cli import-content`: creates, rewrites and retires rows of `questions` and `question_translations` |
+
+The flow: a subagent writes `content/work/<subject>/<topic>.jsonl`; the tools validate it, run its code and look for near-duplicates; a second subagent, which sees only the stripped file, answers it blind; `promote` moves the questions that passed everything into `content/bank/`; `import-content` copies the bank into the database. A test loads the bank with `load_bank` in CI.
+
+What the importer may change is narrow, because the database owns everything live. It writes a question's text, type, difficulty, source, hash and version. It sets the status when it creates a question (`verified` in a launch subject, `draft` elsewhere), when a question leaves the files (`retired`) and when a retired question comes back with new content. It sets the rating from the difficulty while nobody has answered the question. It never touches the counts.
+
+The tests of `content/tools/` are in `api/tests/content_tools/`: the API is the repository's one Python project, and `make lint`, `make typecheck` and `make test` cover both.
 
 ## Where each business rule lives
 

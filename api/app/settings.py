@@ -64,6 +64,37 @@ class Settings(BaseSettings):
     session_token_bytes: int = 32  # 256-bit opaque session tokens
     magic_link_expire_minutes: int = 15
 
+    # ---- question format (content/bank) ----
+    # The limits a line of the question bank must respect. The reason and
+    # code-line limits are the spec's; the others keep a question on one
+    # phone screen.
+    question_stem_max_chars: int = 400
+    question_option_max_chars: int = 140
+    question_reason_max_chars: int = 160
+    question_explanation_max_chars: int = 500
+    question_code_max_lines: int = 15
+    question_code_max_line_chars: int = 80
+
+    # ---- content pipeline (content/tools) ----
+    # Seconds one compile or one run of a question's code may take.
+    code_run_timeout_seconds: float = 10.0
+    # Bytes of output a question's code may print before it is stopped.
+    code_run_max_output_bytes: int = 100_000
+    code_run_c_compiler: str = "cc"
+    # A warning fails the compile. The sanitizers stop a C snippet that
+    # reads out of bounds, uses freed memory or overflows, instead of
+    # letting it print an arbitrary value.
+    code_run_c_flags: tuple[str, ...] = (
+        "-std=c11",
+        "-Wall",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-fno-sanitize-recover=all",
+    )
+    # Two questions of a subject are near-duplicates when their stems, and
+    # their code, are at least this similar (0 to 1).
+    dedupe_similarity: float = 0.85
+
     # ---- practice sessions and question selection ----
     session_length: int = 10
     selection_target_success: float = 0.80

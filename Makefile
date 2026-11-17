@@ -1,7 +1,7 @@
 # Checks run on the host with uv and npm; CI runs these same targets.
 # Each recipe joins its commands with &&, so a failing step fails the target.
 
-.PHONY: help install up down logs ps migrate migration seed \
+.PHONY: help install up down logs ps migrate migration seed import-content \
 	lint lint-api lint-web typecheck typecheck-api typecheck-web \
 	test test-api test-web format build-web
 
@@ -11,11 +11,12 @@ help:
 	@echo "make down       stop them"
 	@echo "make logs       follow their logs"
 	@echo "make migrate    apply the database migrations (needs make up)"
-	@echo "make seed       migrate, then write plans, flags and subjects"
+	@echo "make seed       migrate, then write plans, flags, subjects and topics"
+	@echo "make import-content   bring the questions in line with content/bank"
 	@echo "make migration m=\"add x\"   write a migration from the models"
 	@echo "make lint       ruff, eslint and prettier"
 	@echo "make typecheck  mypy and tsc"
-	@echo "make test       pytest (needs Docker for Postgres) and vitest"
+	@echo "make test       pytest (needs Docker for Postgres, and cc) and vitest"
 	@echo "make format     fix what the linters can fix"
 
 install:
@@ -34,7 +35,7 @@ logs:
 ps:
 	docker compose ps
 
-# The three below run inside the api container, against the database of
+# The four below run inside the api container, against the database of
 # docker compose.
 API_RUN = docker compose exec api uv run --frozen
 
@@ -46,14 +47,19 @@ migrate:
 seed: migrate
 	$(API_RUN) python -m app.cli seed
 
+# Add args=--dry-run to see what would change.
+import-content:
+	$(API_RUN) python -m app.cli import-content $(args)
+
 migration:
 	@test -n "$(m)" || { echo 'usage: make migration m="add a column"'; exit 1; }
 	$(API_RUN) alembic revision --autogenerate -m "$(m)"
 
 lint: lint-api lint-web
 
+# The API and the content tools, which run in the API's environment.
 lint-api:
-	cd api && uv run ruff check && uv run ruff format --check
+	cd api && uv run ruff check . ../content && uv run ruff format --check . ../content
 
 lint-web:
 	cd web && npm run lint
@@ -78,5 +84,5 @@ build-web:
 	cd web && npm run build
 
 format:
-	cd api && uv run ruff check --fix && uv run ruff format
+	cd api && uv run ruff check --fix . ../content && uv run ruff format . ../content
 	cd web && npm run format

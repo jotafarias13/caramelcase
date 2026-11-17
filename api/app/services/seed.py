@@ -1,11 +1,12 @@
 """Seeding: the rows every environment needs before the app can run.
 
-Plans, feature flags and subjects. Seeding again changes only what differs
-from its sources, so it is safe to run at every deploy:
+Plans, feature flags, subjects and topics. Seeding again changes only what
+differs from its sources, so it is safe to run at every deploy:
 
 - plans follow settings.plans: prices and limits are overwritten;
 - feature flags are created switched off and never switched again;
-- subjects follow content/catalog.yaml, except for their status.
+- subjects and topics follow content/catalog.yaml, except for a subject's
+  status.
 
 Nothing is ever deleted. The caller commits.
 """
@@ -17,12 +18,14 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import Base
-from app.db.models import FeatureFlag, Plan, Subject
+from app.db.models import FeatureFlag, Plan, Subject, Topic
 from app.enums import FlagKey, FlagState, SubjectStatus
-from app.services.catalog_file import Catalog, load_catalog
+from app.services.catalog_file import (
+    CATALOG_FILE_NAME,
+    Catalog,
+    load_catalog,
+)
 from app.settings import PlanDefinition, Settings
-
-CATALOG_FILE_NAME = "catalog.yaml"
 
 
 @dataclass(frozen=True)
@@ -32,17 +35,19 @@ class SeedCounts:
     plans: int
     flags: int
     subjects: int
+    topics: int
 
 
 async def seed_all(session: AsyncSession, settings: Settings) -> SeedCounts:
     catalog = load_catalog(settings.content_dir / CATALOG_FILE_NAME)
     await seed_plans(session, settings.plans)
     await seed_flags(session)
-    await seed_subjects(session, catalog)
+    await seed_catalog(session, catalog)
     return SeedCounts(
         plans=await _count(session, Plan),
         flags=await _count(session, FeatureFlag),
         subjects=await _count(session, Subject),
+        topics=await _count(session, Topic),
     )
 
 
@@ -75,6 +80,12 @@ async def seed_flags(session: AsyncSession) -> None:
     await session.flush()
 
 
+async def seed_catalog(session: AsyncSession, catalog: Catalog) -> None:
+    """Bring the subjects and topics in line with the catalog file."""
+    await seed_subjects(session, catalog)
+    await seed_topics(session, catalog)
+
+
 async def seed_subjects(session: AsyncSession, catalog: Catalog) -> None:
     """Create each new catalog subject as a draft, and bring the names,
     badge and order of the others up to date.
@@ -95,6 +106,35 @@ async def seed_subjects(session: AsyncSession, catalog: Catalog) -> None:
         subject.short_pt = entry.short_pt
         subject.short_en = entry.short_en
         subject.sort_order = position
+    await session.flush()
+
+
+async def seed_topics(session: AsyncSession, catalog: Catalog) -> None:
+    """Create each new catalog topic, and bring the names and order of the
+    others up to date. The subjects must exist: seed_subjects comes first.
+
+    A topic that left the catalog is kept: questions point at it.
+    """
+    subject_ids = {
+        slug: subject_id
+        for slug, subject_id in await session.execute(
+            select(Subject.slug, Subject.id)
+        )
+    }
+    existing = {
+        (topic.subject_id, topic.slug): topic
+        for topic in await session.scalars(select(Topic))
+    }
+    for subject in catalog.subjects:
+        subject_id = subject_ids[subject.slug]
+        for position, entry in enumerate(subject.topics, start=1):
+            topic = existing.get((subject_id, entry.slug))
+            if topic is None:
+                topic = Topic(subject_id=subject_id, slug=entry.slug)
+                session.add(topic)
+            topic.name_pt = entry.name_pt
+            topic.name_en = entry.name_en
+            topic.sort_order = position
     await session.flush()
 
 

@@ -128,3 +128,60 @@ The owner saw these and did not object.
 - **Seeding never switches a flag and never changes a subject's status.** It creates missing flags as off and missing subjects as draft. A subject or plan that left its source is kept, not deleted.
 - **`content/catalog.yaml` holds the 20 subjects in the spec's order**; the position in the file is the sort order. Slugs are the Portuguese names in lower-case ASCII (`estruturas-de-dados`), matching the spec's sample question id. `launch: true` marks the three launch subjects, and `typical_year` is kept in the file only.
 - **The API finds `content/` through the `CONTENT_DIR` setting**, which defaults to the repository's directory; docker compose mounts it read-only at `/content`.
+
+## Milestone 3 · Content tooling
+
+### The question format
+
+- **`QuestionDoc` is in `api/app/domain/question_doc.py`, and the tools import it from there.** The API is the repository's one Python project; `content/tools/` is a package that runs in the API's environment and puts `api/` on its import path (three lines in `content/tools/__init__.py`). The other direction, the API importing from `content/`, would put the tools into the production image.
+- **The spec's sample line is abbreviated, and as printed it is not a valid question**: its English text is `"..."` with an empty list of options, which breaks the spec's own rule of four options with reasons in both languages. The test validates the sample with the English written out (`api/tests/support/questions.py`).
+- **`code_check` is a new field: `output`, `runs` or `skip`**, required when a question has code. The spec says to run code "with a deterministic output" and compare it "against the key", but nothing in its format says which questions those are. Guessing from the options would miss the case that matters: a wrong key whose real output is none of the options.
+- **`verification.blind_agrees` is false with a null `blind_key`** when the blind solver found no option, or more than one, that it could defend. Null in both means not solved yet.
+- **The file's `version` is where `questions.version` starts.** The spec has a `version` in the file and also says a changed hash bumps the version. The importer owns the number after the first import; nobody edits it in the files.
+- **`content_hash` covers the whole line except `version` and `verification`**, so recording a blind solve or a hand check is not a change of content. Changing `difficulty_prior` or `source` is.
+- **Limits.** The spec gives 160 characters for a reason and 15 lines of code. Mine, sized to keep a question on one phone screen: 400 characters for a stem, 140 for an option, 500 for an explanation, 80 for a line of code. All six are settings, like every other number, so a deployment that overrides one changes what a valid line is.
+- **Rules the format enforces beyond the spec's list:** option keys are exactly a, b, c, d in that order; no two options of a question have the same text, ignoring case; an option cannot contain "todas as anteriores", "nenhuma das anteriores", "all of the above", "none of the above" or their variants; code is the same string in both languages, has no tab and no empty first or last line; the id is `<subject>.<topic>.<four digits>` and fits `questions.external_id`.
+- **Only `mcq` is a valid type for now.** Milestone 9 extends `QuestionDoc` with the V2 types.
+- **Text is plain text.** Nothing says how a stem or an option is rendered, so the prompts forbid Markdown. Milestone 6 may change that for inline code.
+- **Spec against design: code has no comments.** The mockup `v1-flow-code-mobile.html` shows code with a Portuguese docstring and comments. The spec says code is identical across languages, and a comment cannot be translated, so `prompts/generate.md` asks for code without comments and with Portuguese identifiers without accents, as in the mockup.
+- **The same mockup asks what a function returns without calling it.** That style is valid with `code_check: runs`, which checks that the code runs but not the answer. The prompt prefers a program that prints one line, with `output`, because then the key is checked by execution.
+
+### The catalog
+
+- **50 topics: 13 in Introdução à Programação, 19 in Estruturas de Dados, 18 in Banco de Dados**, about 22 to 31 questions each at 400 per subject. Syllabus items that hold several things are split (variables and operators; conditionals and loops; arrays, matrices and strings; structs, and enums with unions; SQL into DDL, DML, queries, joins, aggregation and subqueries).
+- **Estruturas de Dados has 19 topics, not the "about 16" agreed.** EDB I and EDB II merged leave 19 sections that a student would name separately; merging further would join things like B-trees with balanced binary trees, or hashing with search. Three topics cover complexity (counting steps and cases, asymptotic notation, recursion and recurrences), since both syllabi give it the most space.
+- **C in Estruturas de Dados is two topics**: `ponteiros-e-alocacao-dinamica` and `listas-encadeadas`. Every other topic is Python. Every Banco de Dados topic is SQL, including the conceptual ones, where most questions have no code.
+- **A topic has `covers`**, a sentence of what it includes, written from the syllabus. It tells a question writer where the topic ends. `covers` and `code_language` stay in the file; the `topics` table is unchanged.
+- **Seeding writes the topics too**, and a topic that leaves the catalog stays in the database.
+
+### The tools
+
+- **One command line, `python -m content.tools <command>`**, run from the repository root with `uv run --project api`. Exit code 0 means every question passed, 1 means some failed, 2 means the tool could not work.
+- **Two tools beyond the plan's five: `check-blind` and `promote`.** Without the first, someone edits `blind_key` into 400 lines by hand; without the second, someone decides by hand which lines go to the bank. Both are places where a disagreement could be waved through.
+- **Questions in the pipeline live in `content/work/`, which is not committed.** `content/bank/` holds only questions that passed everything, so the content test also requires `blind_agrees` true and, where code is run, `code_ran` true. Content generation in the background can never break `make test`.
+- **`content/pipeline-log.jsonl` is committed.** A tool run with `--log` appends one line per question file: the step, how many questions it checked and the ids that failed. The report's failure rate is failed checks over checks, so a repaired question counts once per check. Without `--log` nothing is recorded: that is for trying things.
+- **`run-code` runs everything twice** and fails code whose output changes: that is the check for "deterministic", and it catches random numbers, clocks, printed addresses and the order of a Python set of strings.
+- **C is compiled as C11 with `-Wall -Werror` and the address and undefined-behaviour sanitizers.** A read out of bounds or a use after `free` would otherwise print an arbitrary value and pass. Leak detection is off, because it exists on Linux only and a question must pass or fail the same way on every machine. Both checked: clang on macOS and gcc 13 on Linux.
+- **SQL runs on SQLite**, in memory, with foreign keys enforced, through Python's `sqlite3`. A row prints as its columns joined by `|`, NULL as `NULL`. A question about a feature SQLite lacks uses `skip`.
+- **Python runs in the tools' own interpreter (3.12)** with `-I`.
+- **Each run has an empty temporary directory, no input, nothing of the user's environment but `PATH` and `TMPDIR`, a timeout of 10 seconds and 100 kB of output.** It is not a sandbox: generated code runs with the user's rights. The tests in CI run fixed snippets only; nothing in CI executes the bank's code.
+- **Output is compared ignoring whitespace around it and at the end of each line.**
+- **`dedupe` compares the Portuguese stem and the code.** Many questions share a stem such as "O que este programa imprime?", so two questions with code are duplicates only when the code is nearly the same too. Similarity is `difflib`'s ratio, at 0.85, a setting; stems are compared without case, accents or punctuation. The later question of a pair is the one flagged.
+- **The blind solver sees both languages and answers once**, by reasoning, without running code or opening any other file. It answers null when the two languages differ in meaning.
+- **The report adds one number to what the spec asks**: the share of questions whose correct option is the longest of the four, which should be near 25%.
+
+### The importer
+
+- **A new question is `verified` in a launch subject and `draft` in any other**, read from `launch` in the catalog. That is the plan's rule for milestones 4 and 11 without an option someone could get wrong.
+- **The importer sets a status in three cases only**: creating a question, retiring one that left the files, and bringing back a retired question whose content changed, which starts over as if created. A published question whose text changes stays published.
+- **A retired question that is in the files unchanged stays retired** and is listed in the output. It was retired on purpose, or its file went missing for one import; the importer cannot tell which. The runbook has the SQL for the second case.
+- **The rating follows a changed `difficulty_prior` only while nobody has answered the question.**
+- **All or nothing**: one problem anywhere in the bank and nothing is imported. An empty bank is a problem, since it would retire everything. `--dry-run` shows the counts and rolls back.
+- **`import-content` writes the catalog's subjects and topics itself**, so it does not depend on `seed` having run.
+- **An id is never reused.** Nothing enforces it: the files cannot know which ids the database has seen. `content/README.md` and the runbook say so.
+
+### Tests and tooling
+
+- **The tools' tests are in `api/tests/content_tools/`**, and `make lint`, `make typecheck` and `make test` cover `content/tools/` with the API's rules (`content/ruff.toml` extends the API's; pytest gets the repository root on its path; mypy lists the directory).
+- **The run-code tests need a C compiler as `cc`** and fail without one, rather than skip. GitHub's Ubuntu runners have gcc. The tool tests were run on Ubuntu's gcc 13 in a container, but CI itself is still unobserved: nothing has been pushed.
+- **Typer options use `Annotated`**, in the tools and in `app/cli.py`: the default-value style fails ruff's B008 for a `Path`.

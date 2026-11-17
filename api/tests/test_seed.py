@@ -1,4 +1,4 @@
-"""Seeding plans, feature flags and subjects, and the catalog file."""
+"""Seeding plans, feature flags, subjects and topics, and the catalog file."""
 
 from decimal import Decimal
 from pathlib import Path
@@ -8,12 +8,24 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import FeatureFlag, Plan, Subject
-from app.enums import FlagKey, FlagState, PlanKey, SubjectStatus
-from app.services.catalog_file import Catalog, CatalogSubject, load_catalog
+from app.db.models import FeatureFlag, Plan, Subject, Topic
+from app.enums import (
+    CodeLanguage,
+    FlagKey,
+    FlagState,
+    PlanKey,
+    SubjectStatus,
+)
+from app.services.catalog_file import (
+    Catalog,
+    CatalogSubject,
+    CatalogTopic,
+    load_catalog,
+)
 from app.services.seed import (
     SeedCounts,
     seed_all,
+    seed_catalog,
     seed_flags,
     seed_plans,
     seed_subjects,
@@ -33,7 +45,9 @@ def _catalog() -> Catalog:
     return load_catalog(Settings().content_dir / "catalog.yaml")
 
 
-def _entry(slug: str, name: str, short: str) -> CatalogSubject:
+def _entry(
+    slug: str, name: str, short: str, topics: list[CatalogTopic] | None = None
+) -> CatalogSubject:
     return CatalogSubject(
         slug=slug,
         name_pt=name,
@@ -41,6 +55,17 @@ def _entry(slug: str, name: str, short: str) -> CatalogSubject:
         short_pt=short,
         short_en=short,
         typical_year="1",
+        topics=topics or [],
+    )
+
+
+def _topic(slug: str, name: str) -> CatalogTopic:
+    return CatalogTopic(
+        slug=slug,
+        name_pt=name,
+        name_en=name,
+        code_language=CodeLanguage.PYTHON,
+        covers="Tudo sobre o tópico.",
     )
 
 
@@ -86,6 +111,53 @@ def test_a_catalog_file_with_an_unknown_field_is_rejected(
         load_catalog(path)
 
 
+def test_the_launch_subjects_have_their_topics_and_the_others_none() -> None:
+    topics = {s.slug: s.topics for s in _catalog().subjects}
+
+    assert {slug: len(topics[slug]) for slug in LAUNCH_SUBJECTS} == {
+        "introducao-a-programacao": 13,
+        "estruturas-de-dados": 19,
+        "banco-de-dados": 18,
+    }
+    assert all(
+        topics[slug] == [] for slug in topics if slug not in LAUNCH_SUBJECTS
+    )
+
+
+def test_each_topic_has_the_code_language_agreed_for_its_subject() -> None:
+    catalog = _catalog()
+
+    def languages(slug: str) -> dict[str, CodeLanguage]:
+        subject = catalog.subject(slug)
+        assert subject is not None
+        return {topic.slug: topic.code_language for topic in subject.topics}
+
+    assert set(languages("introducao-a-programacao").values()) == {
+        CodeLanguage.C
+    }
+    assert set(languages("banco-de-dados").values()) == {CodeLanguage.SQL}
+    # C for the pointer and dynamic-allocation topics, Python elsewhere.
+    data_structures = languages("estruturas-de-dados")
+    in_c = {slug for slug, lang in data_structures.items() if lang == "c"}
+    assert in_c == {"ponteiros-e-alocacao-dinamica", "listas-encadeadas"}
+    assert set(data_structures.values()) == {
+        CodeLanguage.C,
+        CodeLanguage.PYTHON,
+    }
+    # The topic of the spec's sample question.
+    assert "pilhas" in data_structures
+
+
+def test_a_subject_with_a_repeated_topic_slug_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="more than one topic"):
+        _entry(
+            "estruturas",
+            "Estruturas",
+            "e",
+            [_topic("pilhas", "Pilhas"), _topic("pilhas", "Pilhas de novo")],
+        )
+
+
 # ---- seeding ----
 
 
@@ -94,7 +166,7 @@ async def test_seeding_writes_the_plans_every_flag_off_and_draft_subjects(
 ) -> None:
     counts = await seed_all(session, Settings())
 
-    assert counts == SeedCounts(plans=4, flags=17, subjects=20)
+    assert counts == SeedCounts(plans=4, flags=17, subjects=20, topics=50)
 
     plans = {plan.key: plan for plan in await session.scalars(select(Plan))}
     assert {key: plan.price_month_brl for key, plan in plans.items()} == {
@@ -125,11 +197,27 @@ async def test_seeding_writes_the_plans_every_flag_off_and_draft_subjects(
     assert {s.status for s in subjects} == {SubjectStatus.DRAFT}
     assert (subjects[1].short_pt, subjects[1].short_en) == ("ed", "ds")
 
+    topics = list(
+        await session.scalars(
+            select(Topic)
+            .where(Topic.subject_id == subjects[1].id)
+            .order_by(Topic.sort_order)
+        )
+    )
+    in_catalog = _catalog().subjects[1].topics
+    assert [t.slug for t in topics] == [t.slug for t in in_catalog]
+    assert [t.sort_order for t in topics] == list(range(1, 20))
+    assert (topics[6].slug, topics[6].name_pt, topics[6].name_en) == (
+        "pilhas",
+        "Pilhas",
+        "Stacks",
+    )
+
 
 async def test_seeding_again_changes_no_row(session: AsyncSession) -> None:
     settings = Settings()
     first = await seed_all(session, settings)
-    models = (Plan, FeatureFlag, Subject)
+    models = (Plan, FeatureFlag, Subject, Topic)
     before = [
         (row.id, row.updated_at)
         for model in models
@@ -229,6 +317,44 @@ async def test_seeding_renames_and_reorders_subjects_and_adds_new_ones(
     }
 
 
+async def test_seeding_renames_and_reorders_topics_and_keeps_removed_ones(
+    session: AsyncSession,
+) -> None:
+    def catalog_with(topics: list[CatalogTopic]) -> Catalog:
+        return Catalog(
+            subjects=[
+                _entry("estruturas", "Estruturas", "e", topics),
+                # The same topic slug in another subject is another topic.
+                _entry("algoritmos", "Algoritmos", "a", [topics[0]]),
+            ]
+        )
+
+    await seed_catalog(
+        session,
+        catalog_with([_topic("pilhas", "Pilhas"), _topic("filas", "Filas")]),
+    )
+    await seed_catalog(
+        session,
+        catalog_with(
+            [_topic("deques", "Deques"), _topic("pilhas", "Pilhas e pilhas")]
+        ),
+    )
+
+    rows = await session.execute(
+        select(Subject.slug, Topic.slug, Topic.name_pt, Topic.sort_order).join(
+            Subject, Subject.id == Topic.subject_id
+        )
+    )
+    assert {(row[0], row[1]): (row[2], row[3]) for row in rows} == {
+        ("estruturas", "deques"): ("Deques", 1),
+        ("estruturas", "pilhas"): ("Pilhas e pilhas", 2),
+        # No longer in the catalog: left as it was, never deleted.
+        ("estruturas", "filas"): ("Filas", 2),
+        ("algoritmos", "pilhas"): ("Pilhas", 1),
+        ("algoritmos", "deques"): ("Deques", 1),
+    }
+
+
 # ---- python -m app.cli seed ----
 
 
@@ -243,11 +369,14 @@ async def test_the_seed_command_commits_and_can_run_twice(
 
     for run in (first, second):
         assert run.returncode == 0, output_of(run)
-        assert "4 plans, 17 feature flags, 20 subjects" in run.stdout
+        assert (
+            "4 plans, 17 feature flags, 20 subjects, 50 topics" in run.stdout
+        )
     counts = await run_sql(
         scratch_database,
         "SELECT (SELECT count(*) FROM plans),"
         " (SELECT count(*) FROM feature_flags),"
-        " (SELECT count(*) FROM subjects WHERE status = 'draft')",
+        " (SELECT count(*) FROM subjects WHERE status = 'draft'),"
+        " (SELECT count(*) FROM topics)",
     )
-    assert counts == [(4, 17, 20)]
+    assert counts == [(4, 17, 20, 50)]

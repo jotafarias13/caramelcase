@@ -4,7 +4,7 @@ An outline. Local development is written; the production sections are filled in 
 
 ## Local development
 
-Needs Docker, and for the checks uv and Node 24.
+Needs Docker, and for the checks uv, Node 24 and a C compiler as `cc` (the content tools compile the C of questions).
 
 ```sh
 docker compose up        # Postgres 16, the API with reload, the Vite dev server
@@ -63,8 +63,44 @@ make seed        # make migrate, then python -m app.cli seed
 - **Plans** follow `plans` in `api/app/settings.py`. Prices and limits are overwritten on every run, so change a plan there, not in the table.
 - **Feature flags** are created switched off. A flag that exists keeps its state.
 - **Subjects** follow `content/catalog.yaml`. A new one is created as a draft; an existing one gets its names, badge and order updated and keeps its status.
+- **Topics** follow the same file. A new one is created; an existing one gets its names and order updated. A topic that left the file stays in the database, because questions point at it.
 
 Milestone 5 adds to `make seed`: importing the content, publishing the launch subjects and creating a demo user.
+
+## Importing the question bank
+
+```sh
+make import-content                    # python -m app.cli import-content
+make import-content args=--dry-run     # show the counts, save nothing
+```
+
+It reads `content/bank/` (the directory `CONTENT_DIR` points at) and brings the `questions` and `question_translations` tables in line with it. It is safe to run again, and it also writes the catalog's subjects and topics, so it works on a database that was only migrated.
+
+| A question that is | Becomes |
+| --- | --- |
+| In the files, not in the database | A new row: `verified` in a launch subject, `draft` in any other; rating from its difficulty |
+| In both, same content | Untouched |
+| In both, content changed | New text, `version` plus 1. Status, counts and rating stay, except that the rating follows a new difficulty while nobody has answered the question |
+| In the database, not in the files | `retired`. Nothing is deleted |
+| Retired, back in the files with new content | Rewritten, and `verified` or `draft` again, as if new |
+| Retired, in the files unchanged | Left retired, and listed in the command's output |
+
+"Content" is everything in the line except `version` and `verification`: recording a hand check does not bump a version.
+
+The whole bank is checked first. One invalid line, one question outside the catalog or one question that did not pass the pipeline, and the command prints the problems, exits with code 1 and imports nothing. An empty bank is refused too, since importing it would retire every question.
+
+Before importing into production, run it with `--dry-run` and read the "retired" count: a file missing from the checkout retires its questions, and putting the file back does not bring them back (see the last row of the table). To undo that by hand, give them back the status they had (`published` if the subject is live): `UPDATE questions SET status = 'verified' WHERE external_id LIKE '<subject>.<topic>.%' AND status = 'retired';`.
+
+Never reuse the id of a question that was removed: the database still has the old row under that id.
+
+## Writing questions
+
+`content/README.md` describes the pipeline and its tools. From the repository root:
+
+```sh
+uv run --project api python -m content.tools --help
+uv run --project api python -m content.tools validate content/bank --verified
+```
 
 ## Deploy
 
@@ -87,5 +123,7 @@ To be written in milestones 9 and 10: switching a flag, `grant-plan`.
 To be written in milestone 5: the CLI command the owner runs after the hand check.
 
 ## Troubleshooting
+
+- **`run-code` or its tests fail with "cc is not installed".** Install a C compiler (Xcode command line tools on macOS, `gcc` on Linux), or name another one in `CODE_RUN_C_COMPILER`. The flags are `CODE_RUN_C_FLAGS`; the compiler must support `-fsanitize=address,undefined`.
 
 - **API tests fail to start Postgres with a Docker socket mount error.** testcontainers mounts the Docker socket into its helper container. `api/tests/conftest.py` sets `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock`, which is right for Docker Desktop; set the variable yourself if your Docker uses another path.

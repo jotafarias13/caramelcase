@@ -89,7 +89,8 @@ class Question(Base):
     rating: Mapped[float]
     answers_count: Mapped[int] = mapped_column(default=0)
     correct_count: Mapped[int] = mapped_column(default=0)
-    # Hash of the question's content file line; a change bumps version.
+    # Hash of the question's content in its file (see content_hash in
+    # app/domain/question_doc.py); a change bumps version.
     content_hash: Mapped[str] = mapped_column(String(64))
     version: Mapped[int] = mapped_column(default=1)
     # Where the question came from, for example "generated".

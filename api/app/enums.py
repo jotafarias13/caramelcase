@@ -64,6 +64,14 @@ class QuestionType(StrEnum):
     WRITE_CODE = "write_code"
 
 
+class CodeLanguage(StrEnum):
+    """The languages a question's code can be written in."""
+
+    PYTHON = "python"
+    C = "c"
+    SQL = "sql"
+
+
 class QuestionStatus(StrEnum):
     DRAFT = "draft"
     VERIFIED = "verified"
