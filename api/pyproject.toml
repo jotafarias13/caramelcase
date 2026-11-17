@@ -4,12 +4,15 @@ version = "0.1.0"
 description = "CaramelCase API: practice sessions of computer science questions"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "alembic>=1.20.1",
     "asyncpg>=0.32.0",
     "fastapi>=0.115",
     "loguru>=0.8.0",
     "pydantic>=2",
     "pydantic-settings>=2.16.3",
+    "pyyaml>=6.0.3",
     "sqlalchemy[asyncio]>=2",
+    "typer>=0.29.1",
     "uvicorn[standard]>=0.54.0",
 ]
 
@@ -54,4 +57,5 @@ dev = [
     "pytest-asyncio>=1.5.0",
     "ruff>=0.17.5",
     "testcontainers[postgres]>=4.15.0",
+    "types-pyyaml>=6.0.12.20261113",
 ]

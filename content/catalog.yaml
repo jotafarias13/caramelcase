@@ -1,0 +1,158 @@
+# The subject catalog, in the order subjects are shown and generated.
+#
+# `python -m app.cli seed` copies it to the subjects table: a new subject
+# is created as a draft, an existing one gets its names, badge and order
+# updated, and its status is left alone.
+#
+#   slug          stable id; the first part of every question id
+#   name_pt/_en   the subject's name in each language
+#   short_pt/_en  the label on the subject's badge ("ed" is shown as "ed/")
+#   typical_year  a rough guide for Brazilian computing degrees, to be
+#                 checked against the real curriculum
+#   launch        true for the three subjects V1 launches with
+#
+# Topics are added under each subject in milestone 3.
+
+subjects:
+  - slug: introducao-a-programacao
+    name_pt: Introdução à Programação
+    name_en: Introduction to Programming
+    short_pt: prog
+    short_en: prog
+    typical_year: "1"
+    launch: true
+
+  - slug: estruturas-de-dados
+    name_pt: Estruturas de Dados
+    name_en: Data Structures
+    short_pt: ed
+    short_en: ds
+    typical_year: 1 to 2
+    launch: true
+
+  - slug: banco-de-dados
+    name_pt: Banco de Dados
+    name_en: Databases
+    short_pt: bd
+    short_en: db
+    typical_year: "2"
+    launch: true
+
+  - slug: programacao-orientada-a-objetos
+    name_pt: Programação Orientada a Objetos
+    name_en: Object-Oriented Programming
+    short_pt: poo
+    short_en: oop
+    typical_year: 1 to 2
+
+  - slug: matematica-discreta
+    name_pt: Matemática Discreta
+    name_en: Discrete Mathematics
+    short_pt: md
+    short_en: dm
+    typical_year: "1"
+
+  - slug: logica-para-computacao
+    name_pt: Lógica para Computação
+    name_en: Logic for Computing
+    short_pt: log
+    short_en: logic
+    typical_year: "1"
+
+  - slug: analise-e-projeto-de-algoritmos
+    name_pt: Análise e Projeto de Algoritmos
+    name_en: Algorithm Design and Analysis
+    short_pt: alg
+    short_en: alg
+    typical_year: "2"
+
+  - slug: circuitos-digitais
+    name_pt: Circuitos Digitais
+    name_en: Digital Circuits
+    short_pt: cd
+    short_en: dc
+    typical_year: 1 to 2
+
+  - slug: arquitetura-e-organizacao-de-computadores
+    name_pt: Arquitetura e Organização de Computadores
+    name_en: Computer Architecture
+    short_pt: arq
+    short_en: arch
+    typical_year: "2"
+
+  - slug: sistemas-operacionais
+    name_pt: Sistemas Operacionais
+    name_en: Operating Systems
+    short_pt: so
+    short_en: os
+    typical_year: 2 to 3
+
+  - slug: redes-de-computadores
+    name_pt: Redes de Computadores
+    name_en: Computer Networks
+    short_pt: redes
+    short_en: net
+    typical_year: "3"
+
+  - slug: engenharia-de-software
+    name_pt: Engenharia de Software
+    name_en: Software Engineering
+    short_pt: es
+    short_en: se
+    typical_year: 2 to 3
+
+  - slug: teoria-dos-grafos
+    name_pt: Teoria dos Grafos
+    name_en: Graph Theory
+    short_pt: grafos
+    short_en: graphs
+    typical_year: 2 to 3
+
+  - slug: probabilidade-e-estatistica
+    name_pt: Probabilidade e Estatística
+    name_en: Probability and Statistics
+    short_pt: prob
+    short_en: stats
+    typical_year: "2"
+
+  - slug: linguagens-formais-e-automatos
+    name_pt: Linguagens Formais e Autômatos
+    name_en: Formal Languages and Automata
+    short_pt: lfa
+    short_en: fla
+    typical_year: "3"
+
+  - slug: teoria-da-computacao
+    name_pt: Teoria da Computação
+    name_en: Theory of Computation
+    short_pt: tc
+    short_en: toc
+    typical_year: "3"
+
+  - slug: paradigmas-de-linguagens-de-programacao
+    name_pt: Paradigmas de Linguagens de Programação
+    name_en: Programming Language Paradigms
+    short_pt: plp
+    short_en: plp
+    typical_year: 2 to 3
+
+  - slug: compiladores
+    name_pt: Compiladores
+    name_en: Compilers
+    short_pt: comp
+    short_en: comp
+    typical_year: 3 to 4
+
+  - slug: inteligencia-artificial-e-aprendizado-de-maquina
+    name_pt: Inteligência Artificial e Aprendizado de Máquina
+    name_en: AI and Machine Learning
+    short_pt: ia
+    short_en: ai
+    typical_year: 3 to 4
+
+  - slug: sistemas-distribuidos
+    name_pt: Sistemas Distribuídos
+    name_en: Distributed Systems
+    short_pt: dist
+    short_en: dist
+    typical_year: 3 to 4

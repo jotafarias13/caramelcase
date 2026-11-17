@@ -20,6 +20,8 @@ The first start installs the API and web dependencies inside the containers, int
 
 `docker compose down` stops everything and keeps the data; `docker compose down -v` also deletes the database and the dependency volumes.
 
+A new database is empty. `make seed` creates the tables and the starting rows (see Seeding).
+
 ## Checks
 
 ```sh
@@ -29,13 +31,40 @@ make typecheck    # mypy, tsc
 make test         # pytest and vitest
 ```
 
-The API tests start their own Postgres 16 container, so Docker must be running. To use a server that is already up instead, set `TEST_DATABASE_URL`.
+The API tests start their own Postgres 16 container, so Docker must be running. To use a server that is already up instead, set `TEST_DATABASE_URL`: the tests drop everything in that database, and create and drop other databases on that server, so its user needs `CREATEDB`.
 
 CI (`.github/workflows/ci.yaml`) runs the same targets on every push.
 
+## Database migrations
+
+The schema is managed by Alembic. Its files are in `api/app/db/migrations/versions/`, one per change, and `api/alembic.ini` lists the commands. The database URL comes from `DATABASE_URL`.
+
+```sh
+make migrate                         # apply every migration to the docker compose database
+make migration m="add a column"      # write a new migration from the models
+```
+
+Both run inside the `api` container, so `make up` comes first.
+
+To change the schema: edit the model in `api/app/db/models/`, run `make migrate` so the database is at the latest migration, run `make migration m="..."`, read the new file, then `make migrate` again. `make test` fails while a model and the migrations differ.
+
+A new value in an enum of `api/app/enums.py` needs no migration: enum columns are plain `VARCHAR(32)`.
+
+Outside docker compose, from `api/`: `uv run alembic upgrade head`, `uv run alembic downgrade -1` to undo the last migration, `uv run alembic upgrade head --sql` to print the SQL without running it.
+
 ## Seeding
 
-To be written in milestone 5: `make seed`.
+```sh
+make seed        # make migrate, then python -m app.cli seed
+```
+
+`python -m app.cli seed` writes the rows every environment needs, and is safe to run again:
+
+- **Plans** follow `plans` in `api/app/settings.py`. Prices and limits are overwritten on every run, so change a plan there, not in the table.
+- **Feature flags** are created switched off. A flag that exists keeps its state.
+- **Subjects** follow `content/catalog.yaml`. A new one is created as a draft; an existing one gets its names, badge and order updated and keeps its status.
+
+Milestone 5 adds to `make seed`: importing the content, publishing the launch subjects and creating a demo user.
 
 ## Deploy
 

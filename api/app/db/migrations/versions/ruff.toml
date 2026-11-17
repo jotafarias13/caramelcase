@@ -1,0 +1,10 @@
+# A migration reads as a list of tables, one column per line, which needs
+# wider lines than the rest of the code.
+extend = "../../../../pyproject.toml"
+line-length = 120
+# Where "app" is, so that its imports sort as the project's own.
+src = ["../../../.."]
+
+[lint.extend-per-file-ignores]
+# A migration is as long as the change it makes.
+"*.py" = ["PLR0915"]

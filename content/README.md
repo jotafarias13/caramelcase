@@ -4,7 +4,7 @@ The question bank and the tools that check it. The files here are the source of 
 
 | Path | Contents | Arrives in |
 | --- | --- | --- |
-| `catalog.yaml` | Subjects and topics | Milestone 2 (subjects), milestone 3 (topics) |
+| `catalog.yaml` | The 20 subjects, in catalog order. `python -m app.cli seed` copies them to the database as drafts | Here since milestone 2; topics join in milestone 3 |
 | `prompts/` | Generation and blind-solve instructions | Milestone 3 |
 | `tools/` | validate, strip-keys, run-code, dedupe, report | Milestone 3 |
 | `bank/<subject>/<topic>.jsonl` | One question per line | Milestone 4 |

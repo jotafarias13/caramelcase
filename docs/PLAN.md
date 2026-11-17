@@ -2,7 +2,7 @@
 
 The build order for `docs/initial-spec.md`, as a checklist. Work top to bottom: the next task is the first unticked box. A milestone is done when every box under it is ticked, lint, type checks and tests pass, and it is committed.
 
-Status on 2026-11-16: milestone 1 done. Next: milestone 2, Schema.
+Status on 2026-11-16: milestones 1 and 2 done. Next: milestone 3, Content tooling.
 
 ## Decisions
 
@@ -39,9 +39,9 @@ The changes to the spec agreed with the owner, and the defaults chosen where spe
 
 ### 2. Schema
 
-- [ ] Every table in the spec's data model exists as a typed SQLAlchemy model, plus `questions.external_id`, the university and course fields, and the extra tables listed above. UUID keys, `created_at` and `updated_at` everywhere, UTC.
-- [ ] `alembic upgrade head` on an empty database and `alembic downgrade base` both succeed; a test fails when models and migrations drift.
-- [ ] Idempotent seeds: plans (free 0, plus 15, pro 40, max 100, placeholder limits), every flag off, and the 20 subjects from `content/catalog.yaml` as draft.
+- [x] Every table in the spec's data model exists as a typed SQLAlchemy model, plus `questions.external_id`, the university and course fields, and the extra tables listed above. UUID keys, `created_at` and `updated_at` everywhere, UTC.
+- [x] `alembic upgrade head` on an empty database and `alembic downgrade base` both succeed; a test fails when models and migrations drift.
+- [x] Idempotent seeds: plans (free 0, plus 15, pro 40, max 100, placeholder limits), every flag off, and the 20 subjects from `content/catalog.yaml` as draft.
 
 ### 3. Content tooling
 

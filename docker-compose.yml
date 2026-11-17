@@ -38,6 +38,7 @@ services:
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       LOG_JSON: "false"
+      CONTENT_DIR: /content
       # Keep the container's virtualenv apart from the host's api/.venv.
       UV_PROJECT_ENVIRONMENT: /opt/venv
       UV_LINK_MODE: copy
@@ -45,6 +46,8 @@ services:
       - ${API_PORT:-8000}:8000
     volumes:
       - ./api:/app
+      # The catalog and the question bank, which seeding and importing read.
+      - ./content:/content:ro
       - api_venv:/opt/venv
       - uv_cache:/root/.cache/uv
     depends_on:

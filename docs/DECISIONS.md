@@ -75,3 +75,56 @@ The owner saw these and did not object.
 - **Local compose uses stock images and no development Dockerfiles.** The API runs in the uv image and the web app in the Node image, each with the source bind-mounted and its dependencies installed at start into a named volume, apart from the host's `.venv` and `node_modules`. Compose needs no `.env`: every value has a default.
 - **`make lint`, `make typecheck` and `make test` run on the host** with uv and npm. CI calls the same targets, split into an API job and a web job, and also builds the web app.
 - **CI runs on every push to any branch.** It could not be observed yet: nothing has been pushed.
+
+## Milestone 2 · Schema
+
+### Conventions of every table
+
+- **An enum is stored as text in a `VARCHAR(32)`, with no database enum type and no CHECK.** The values are the `StrEnum` classes in `api/app/enums.py`; SQLAlchemy rejects an unknown value on write and on read. Adding a value needs no migration, and the models cannot drift from the database over it. The cost: a value written with plain SQL is not checked until the app reads it.
+- **Keys that are data stay plain strings**: feature-flag keys, plan keys, league tiers, event names, the billing provider and a question's source. A row whose key the code no longer knows still loads, so removing a flag from the code cannot break `GET /config`.
+- **The database enforces keys, uniqueness and NOT NULL; value rules live in Python.** There are no CHECK constraints: Alembic cannot see them change, so each one would be a place where models and migrations drift unnoticed.
+- **`created_at` and `updated_at` are set in Python**, with `now()` as the database default for rows inserted with plain SQL. Each test runs in one transaction, where Postgres freezes `now()`, so database-side timestamps would all be equal in tests. `updated_at` equals `created_at` until the first update. An UPDATE written in plain SQL does not move `updated_at`: there is no trigger.
+- **Business defaults are Python defaults on the model**, never database defaults, so no migration carries a business value. `user_settings.daily_goal` has no default at all: milestone 5 adds the number to settings.
+- **A user's rows are deleted with the user** (`ON DELETE CASCADE`), attempts and question reports included; a question's own counts and rating stay. Milestone 7 builds `DELETE /me` on this and may choose to keep anonymous attempts instead.
+- **No ORM relationships.** Queries join explicitly, which also avoids lazy loading under async.
+- **Models are split by area** in `api/app/db/models/`: identity, content, practice, product (flags, events), retention (V2) and monetization (V3).
+
+### Columns and tables beyond the spec's key columns
+
+- **`subjects.short_pt` and `short_en`**: the badge the design puts next to a subject ("ed/", "ds/"). The design gives five; the labels of the other subjects in `content/catalog.yaml` are mine and are the owner's to change.
+- **`users.current_subject_id`**: the subject Home shows. Onboarding step 3 picks one subject, and a switch on Home must survive a reload and a change of device. `user_subjects` is the list of chosen subjects that the V2 catalog adds to and removes from.
+- **`users.referral_code`**: the code in the invite link. `referrals` records who invited whom, when the invited student finished a first session and when the reward was given.
+- **Notification preferences are three columns** on `user_settings`: `daily_reminder`, `weekly_email` and `reminder_time` (local time; null means a default hour). Both switches default to off: opting in is the safe default under LGPD, and milestone 9 decides how the student is asked.
+- **`question_reports.locale`**: the language the student was reading, without which a "typo" report points at two texts.
+- **`attempts` stores both ratings after the answer as well as before.** The session summary shows a rating change that must read the same later, and K changes with the number of answers, so it cannot be recomputed. Before and after are equal when the attempt moved no rating.
+- **An attempt is unique per session and question**, so a repeated request (the offline flow resubmits) cannot count twice.
+- **`practice_sessions.subject_id` is nullable**: a review or an exam-track session can mix subjects. V1 sessions always have one.
+- **`daily_activity.sessions_finished`**: the streak counts a day with one finished session, which the spec's `questions` and `goal_met` cannot tell.
+- **Streak-repair state is two columns on `streaks`** (`lost_length`, `lost_at`), not a table: a user has at most one lost streak to repair.
+- **`events.occurred_at`, and `events.user_id` nullable.** Events arrive in batches, so the time of arrival loses their order; and the landing page can send events before the visitor has a guest account.
+- **Leagues:** `league_weeks` is one row per week. `league_memberships` holds the student's tier and `cohort` (which league of that tier, since a tier is split into leagues of ten), the week's XP, and `final_rank` and `outcome` once the week closes. A student has one membership per week.
+- **`user_achievements.seen_at`**: the design marks an unseen badge "Nova!".
+- **Mock exams:** `exam_templates` has a slug, names and an optional subject besides the spec's track, duration and composition. `exam_attempts` points at a practice session of mode `exam`, which holds the questions and answers, and adds the score and the results by topic.
+- **`plans.price_semester_brl`**, for the semester pass the spec's billing section sells by Pix. The yearly and semester prices are null until the owner sets them.
+- **`subscriptions` is unique per provider and provider reference**, so a repeated webhook finds and updates its own row. `plan_key` is a foreign key to `plans.key`.
+- **`tutor_threads.topic_id`**: the design opens the tutor from a topic as well as from a question.
+- **The four extra tables** agreed in milestone 1: `lives` (lives left, when the refill started), `referrals`, `push_subscriptions` (platform, endpoint or device token, Web Push keys) and `user_subjects`.
+- **Left for the milestone that needs them:** whether a magic link remembers the guest who asked for it (5), which subjects belong to which course for the catalog's filter (9), and the name and date of an exam track (10).
+
+### Migrations
+
+- **One migration, `0001`, creates all 36 tables.** It was autogenerated from the models and then read and tidied. Enum columns appear in it as `sa.String(32)`; `env.py` writes them that way in future migrations too.
+- **Migration files may be 120 columns wide** (`versions/ruff.toml`), so a table reads one column per line. The rest of the code stays at 79.
+- **The drift test is `alembic check`**, run by pytest against the migrated test database. A second test removes a column and expects the check to fail, so a broken check cannot pass silently.
+- **Tests run Alembic and the CLI as separate processes**, the way a deploy does, and build the test database with `alembic upgrade head`. Tests that migrate or commit for real get a scratch database of their own, created and dropped on the same server.
+- **The per-test rollback from `kai-api` is in place**: a test's `session` and each request's session share one transaction that is never committed.
+- **`make migrate`, `make seed` and `make migration` run inside the `api` container**, against the docker compose database, unlike the checks, which run on the host. They need no `DATABASE_URL` on the host and follow whatever ports `.env` sets.
+
+### Seeds and the catalog
+
+- **`python -m app.cli seed`** is the first CLI command. `make seed` runs the migrations and then it; milestone 5 extends the target with content import, publishing and the demo user.
+- **Plans live in `settings.plans` and the `plans` table mirrors them.** The spec puts plan limits among the tunables of the settings module and also asks for a table. Seeding overwrites prices and limits from settings on every run, so a plan is changed in settings, never in the table.
+- **Placeholder limits**, from the spec's plan table: `sessions_per_day` (3 on free, null for no limit), `ads`, `tutor_messages_per_day` (0, 0, 30, 200), `exam_mode`, `exam_tracks`.
+- **Seeding never switches a flag and never changes a subject's status.** It creates missing flags as off and missing subjects as draft. A subject or plan that left its source is kept, not deleted.
+- **`content/catalog.yaml` holds the 20 subjects in the spec's order**; the position in the file is the sort order. Slugs are the Portuguese names in lower-case ASCII (`estruturas-de-dados`), matching the spec's sample question id. `launch: true` marks the three launch subjects, and `typical_year` is kept in the file only.
+- **The API finds `content/` through the `CONTENT_DIR` setting**, which defaults to the repository's directory; docker compose mounts it read-only at `/content`.

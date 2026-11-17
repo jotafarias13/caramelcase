@@ -9,11 +9,39 @@ and "Monetization structure") and, for lives and leagues, from
 design/README.md ("Decisions made by the designer").
 """
 
+from decimal import Decimal
 from functools import lru_cache
+from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import field_validator
+from pydantic import BaseModel, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+from app.enums import PlanKey
+
+# The repository's content/ directory, when the API runs from a checkout.
+_REPO_CONTENT_DIR = Path(__file__).resolve().parents[2] / "content"
+
+
+class PlanLimits(BaseModel):
+    """What a plan allows. Stored in plans.limits."""
+
+    sessions_per_day: int | None  # None means no limit
+    ads: bool
+    tutor_messages_per_day: int
+    exam_mode: bool
+    exam_tracks: bool
+
+
+class PlanDefinition(BaseModel):
+    """A plan as seeding writes it to the plans table."""
+
+    key: PlanKey
+    price_month_brl: Decimal
+    # None until the price of the yearly and of the semester pass is set.
+    price_year_brl: Decimal | None = None
+    price_semester_brl: Decimal | None = None
+    limits: PlanLimits
 
 
 class Settings(BaseSettings):
@@ -29,6 +57,8 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     # JSON lines for production; false gives readable lines for development.
     log_json: bool = True
+    # Where catalog.yaml and the question bank are read from.
+    content_dir: Path = _REPO_CONTENT_DIR
 
     # ---- auth ----
     session_token_bytes: int = 32  # 256-bit opaque session tokens
@@ -98,6 +128,56 @@ class Settings(BaseSettings):
 
     # ---- reminders (V2) ----
     push_max_per_day: int = 1
+
+    # ---- plans (V3) ----
+    # Seeding copies these to the plans table. The prices are set; the
+    # limits are placeholders until the owner decides them.
+    plans: tuple[PlanDefinition, ...] = (
+        PlanDefinition(
+            key=PlanKey.FREE,
+            price_month_brl=Decimal(0),
+            limits=PlanLimits(
+                sessions_per_day=3,
+                ads=True,
+                tutor_messages_per_day=0,
+                exam_mode=False,
+                exam_tracks=False,
+            ),
+        ),
+        PlanDefinition(
+            key=PlanKey.PLUS,
+            price_month_brl=Decimal(15),
+            limits=PlanLimits(
+                sessions_per_day=None,
+                ads=False,
+                tutor_messages_per_day=0,
+                exam_mode=True,
+                exam_tracks=False,
+            ),
+        ),
+        PlanDefinition(
+            key=PlanKey.PRO,
+            price_month_brl=Decimal(40),
+            limits=PlanLimits(
+                sessions_per_day=None,
+                ads=False,
+                tutor_messages_per_day=30,
+                exam_mode=True,
+                exam_tracks=False,
+            ),
+        ),
+        PlanDefinition(
+            key=PlanKey.MAX,
+            price_month_brl=Decimal(100),
+            limits=PlanLimits(
+                sessions_per_day=None,
+                ads=False,
+                tutor_messages_per_day=200,
+                exam_mode=True,
+                exam_tracks=True,
+            ),
+        ),
+    )
 
     # ---- ads (V3) ----
     ad_break_every_sessions: int = 2
