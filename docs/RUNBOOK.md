@@ -1,6 +1,6 @@
 # Runbook
 
-An outline. Local development is written; the production sections are filled in by milestone 8.
+How to run CaramelCase: on a laptop first, then in production (from "Production" on).
 
 ## Local development
 
@@ -156,17 +156,125 @@ uv run --project api python -m content.tools --help
 uv run --project api python -m content.tools validate content/bank --verified
 ```
 
-## Deploy
+## Production
 
-To be written in milestone 8: first deploy, later deploys, migrations as an explicit step, the workflows and their secrets.
+One Linux server runs everything with Docker Compose, from a clone of the repository: `deploy/docker-compose.yml` with its values in `deploy/.env`. Four services: `nginx` (the web app's image: nginx serving the built app and proxying `/api`), `api` (gunicorn with Uvicorn workers), `db` (Postgres 16 in the volume `caramelcase-prod_db_data`) and `certbot` (run only for certificates). The images are built by GitHub Actions and pulled from Docker Hub; nginx's configuration and the scripts come from the clone. `docs/ARCHITECTURE.md` has the request path.
+
+Every production command is a target of `deploy/Makefile`: `make -C deploy help` lists them. They run on the server, from the repository's root.
+
+### First deploy
+
+Once, on a new server:
+
+1. **The server.** Ubuntu with ports 22, 80 and 443 open. `sudo deploy/scripts/install_server.sh` (after cloning, step 3) installs Docker with compose, git, make and envsubst.
+2. **The domain.** An A record from `DOMAIN` to the server's address. Only `DOMAIN` gets a certificate; `www.` is not served.
+3. **The clone.** `git clone <repository> /opt/caramelcase` (or another place: `PROJECT_ROOT` in `deploy/.env` must say where). A private repository needs a deploy key on the server.
+4. **The settings.** `cp deploy/.env.example deploy/.env` and fill it in. At least: the two image names, `DOMAIN`, `CERTBOT_EMAIL`, `PROJECT_ROOT`, `POSTGRES_PASSWORD` (`openssl rand -hex 24`), `APP_BASE_URL` and `CORS_ORIGINS` (`https://<DOMAIN>`), and SMTP, without which nobody can sign in by email. Google sign-in is optional. Values with spaces go in double quotes: the scripts load the file with bash.
+5. **Docker Hub.** `docker login`, if the images are private.
+6. **The certificate.** `sudo make -C deploy certificate`: nginx answers Let's Encrypt's challenge, certbot gets the certificate, and a cron job to renew it is installed (see "TLS certificates").
+7. **The deploy.** `make -C deploy deploy`, or the "Deploy to production" workflow once its secrets are set. The images must have been published first ("Build and publish images").
+8. **The questions.** `make -C deploy import-content args=--dry-run`, then `make -C deploy import-content`. Students see nothing until a subject is published: after the hand check of about 50 questions, `make -C deploy publish s="introducao-a-programacao"` (see "Publishing a subject").
+9. **Backups.** `sudo make -C deploy backup-cron` installs the nightly dump (see "Backup and restore").
+10. **A look.** Open `https://<DOMAIN>`; `make -C deploy ps` shows three services healthy.
+
+### Later deploys
+
+1. Merge into `main`.
+2. GitHub, Actions, **Build and publish images**, Run workflow on `main`. It runs CI first and builds only a commit that passes, then pushes `<user>/caramelcase-api` and `<user>/caramelcase-web`, each tagged `main` and `main-<short sha>`.
+3. Actions, **Deploy to production**, Run workflow on `main`. On the server it runs `git pull` and `deploy/scripts/deploy.sh`.
+
+Without GitHub, on the server: `git pull && make -C deploy deploy`.
+
+`deploy/scripts/deploy.sh` does, in order:
+
+1. Tags the images the server has as `<image>:main-bkp`.
+2. Pulls the new images.
+3. Runs `nginx -t` in the new web image with the configuration from the clone.
+4. Migrates the database with the new API image (`alembic upgrade head`), then seeds plans, flags, subjects and topics. **This is the only place migrations run**: the API never migrates on start.
+5. Starts the new images and waits up to 3 minutes for every service to be healthy.
+6. If they are not: prints the last log lines, starts the `-bkp` images again and exits with 1. If a step before 5 fails, nothing running was touched.
+
+A rollback puts back images, not the schema: migrations stay applied. Write each migration so that the API before it still runs on the schema after it (add a column before using it, drop it a release after the code stops using it).
+
+**To go back to an older version on purpose:** set `DOCKER_TAG=main-<short sha>` in `deploy/.env` and `make -C deploy deploy`; set it back to `main` afterwards.
+
+**After the question bank changed:** the content travels in the API's image, so after the deploy run `make -C deploy import-content args=--dry-run`, read the "retired" count, import, and run `make -C deploy publish s=...` again for a published subject.
+
+### The workflows' secrets
+
+GitHub, Settings, Secrets and variables, Actions. The names are those of the owner's kai repositories.
+
+| Secret | Used by | What it is |
+| --- | --- | --- |
+| `DOCKER_HUB_USERNAME` | both | The Docker Hub account the images are pushed to and pulled from |
+| `DOCKER_HUB_TOKEN` | both | An access token of that account: read and write for the build, read for the deploy |
+| `VM_HOST` | deploy | The server's address |
+| `VM_USER` | deploy | The user the workflow signs in as over SSH; it must be able to run `docker` |
+| `VM_SSH_PRIVATE_KEY` | deploy | The private key of that user's SSH key |
+| `PROJECT_ROOT` | deploy | Where the repository is cloned on the server, as in `deploy/.env` |
+| `VITE_SENTRY_DSN` | build, optional | Sentry for the web app (see "Logs and monitoring") |
+| `VITE_PLAUSIBLE_DOMAIN` | build, optional | Plausible analytics: the site's domain as registered at Plausible |
+| `VITE_PLAUSIBLE_SCRIPT` | build, optional | Another Plausible script address (self-hosted Plausible, or the site's own script) |
+
+The image names come from the repository's name: a repository called `caramelcase` gives `<DOCKER_HUB_USERNAME>/caramelcase-api` and `-web`, which `deploy/.env` must name.
+
+### Trying the production stack on a laptop
+
+The same files with plain http, against images built on the laptop. In `deploy/.env` (from `.env.example`): `DOMAIN=localhost`, `NGINX_CONF_FILE=default.conf.http`, `HTTP_PORT=8080`, `HTTPS_PORT=8443`, `DOCKER_IMAGE_API=caramelcase-api`, `DOCKER_IMAGE_WEB=caramelcase-web`, `DOCKER_TAG=local`, a password, `APP_BASE_URL` and `CORS_ORIGINS` set to `http://localhost:8080`, and on an Apple M4 `OPENSSL_armcap=0` (see "Troubleshooting"). Then:
+
+```sh
+make -C deploy build          # both images, about 2 minutes the first time
+make -C deploy migrate seed import-content
+make -C deploy publish s="introducao-a-programacao estruturas-de-dados banco-de-dados"
+make -C deploy up             # http://localhost:8080
+E2E_BASE_URL=http://localhost:8080 make e2e
+docker compose -f deploy/docker-compose.yml down -v    # stop, and delete its database
+```
+
+The compose project is `caramelcase-prod`, apart from the development stack's `caramelcase`, so the two never share a database. Chromium accepts the Secure cookie on `http://localhost`; another browser, or the laptop's address on a network, needs `SESSION_COOKIE_SECURE=false`. `make -C deploy deploy` pulls images, so it needs a registry: a throwaway one (`docker run -d -p 5001:5000 registry:2`, images named `localhost:5001/caramelcase-api`, `make -C deploy build`, then `docker push` both) runs the script as on the server.
+
+Milestone 8 tried all of this on 2026-11-17, on an M4 with Docker Desktop 27.5: the first deploy (18 seconds), the Playwright test in both languages through nginx and gunicorn, the https configuration with a self-signed certificate in the certbot volume, a rollback from an API image that does not start, a deploy stopped by a broken nginx configuration, backups and a restore. The one thing not tried is a real certificate from Let's Encrypt, which needs a public domain.
 
 ## TLS certificates
 
-To be written in milestone 8: first issue and renewal.
+- **First certificate:** `sudo make -C deploy certificate` (`deploy/certbot/certbot.sh`), before the first deploy. It starts nginx alone with `default.conf.https.temp`, which serves only `/.well-known/acme-challenge/`; certbot writes its challenge into the shared volume and Let's Encrypt fetches it over port 80; then the temporary nginx is removed and `/etc/cron.d/caramelcase_renew` installed. To try it without spending Let's Encrypt's weekly limit, add `--staging` to the certbot command in the script first.
+- **Renewal:** every day at 02:00, cron runs `deploy/certbot/renew.sh`: `certbot renew` renews a certificate close to expiry, and nginx reloads it. Its log is `/var/log/caramelcase-renew.log`. By hand: `sudo deploy/certbot/renew.sh`.
+- **When it expires:** `docker compose -f deploy/docker-compose.yml run --rm certbot certificates` shows the date.
+- The certificate lives in the volume `caramelcase-prod_certbot`, which nginx mounts at `/etc/nginx/ssl`. Deleting that volume means issuing again.
 
 ## Backup and restore
 
-To be written in milestone 8: `deploy/backup.sh` and the restore procedure, tried locally.
+- **Every night at 03:00**, cron runs `deploy/backup.sh` (installed once by `sudo make -C deploy backup-cron` as `/etc/cron.d/caramelcase_backup`; its log is `/var/log/caramelcase-backup.log`). It writes `caramelcase-<UTC time>.dump`, a compressed `pg_dump`, to `BACKUP_DIR` (`/var/backups/caramelcase`) and deletes all but the newest `BACKUP_KEEP` (14). The files are readable by root only: they hold students' data. One now: `sudo make -C deploy backup`.
+- **They are on the server's own disk.** A lost server loses them too. Copying them elsewhere (a bucket, another machine) is still to be decided.
+- **A deleted account stays in the backups** for 14 days, as the privacy policy says.
+
+**Restoring** replaces the whole database:
+
+```sh
+sudo deploy/restore.sh /var/backups/caramelcase/caramelcase-20261118T030000Z.dump
+```
+
+It asks for the database's name to go on, stops nginx and the API (the app is down meanwhile), saves the current database as `before-restore-<time>.dump` beside the backups (which `backup.sh` never deletes), drops and recreates the database, restores the dump with `pg_restore`, and starts everything again. After a restore, check the deployed code's migrations against the dump's: a dump older than a migration needs `make -C deploy migrate`.
+
+Tried on the laptop stack on 2026-11-17: four backups with `BACKUP_KEEP=3` left the newest three; after deleting every user and unpublishing every question, a restore brought back the 2 users, 20 answers and 880 published questions of the dump, and the app answered again. A wrong name at the prompt changed nothing.
+
+**Reading one table out of a dump** without touching production:
+
+```sh
+cd deploy
+docker compose exec -T db sh -c 'createdb -U "$POSTGRES_USER" scratch'
+docker compose exec -T db sh -c 'pg_restore -U "$POSTGRES_USER" -d scratch --no-owner' \
+    < /var/backups/caramelcase/caramelcase-20261118T030000Z.dump
+make psql      # then \c scratch; drop it afterwards with dropdb
+```
+
+## Logs and monitoring
+
+- **Logs:** `make -C deploy logs`, or one service: `docker compose -f deploy/docker-compose.yml logs api`. The API writes one JSON object per line (`time` in UTC, `level`, `message`, then fields such as `request_id`, `path`, `status`, `duration_ms`, or `logger` for a line of gunicorn or a library). nginx writes one per request, with `request_id` set to the API's for `/api` requests, so `grep <request_id>` finds both lines. nginx's error log stays plain text. Docker keeps 5 files of 10 MB per container.
+- **Health:** `https://<DOMAIN>/api/v1/health` answers 200 when the API reaches the database. That is the address for an uptime monitor.
+- **Error tracking (Sentry, or GlitchTip):** for the API, `SENTRY_DSN` in `deploy/.env` and `make -C deploy up`; for the web app, the `VITE_SENTRY_DSN` secret and a new build. Without them nothing is sent. Neither sends cookies, request bodies or a user's identity, and the web app strips query strings, where a sign-in link carries its token.
+- **Analytics (Plausible):** the `VITE_PLAUSIBLE_DOMAIN` secret and a new build. Plausible sets no cookies. Without the secret the build has no script.
+- **Before switching on either:** add the service to the privacy policy's list of who receives data (`legal` in `web/src/i18n/`).
 
 ## Feature flags and plans
 
@@ -212,6 +320,7 @@ The auth routes, sign-in links, answers and reports are limited (the table is in
 - **Lift a limit for someone now:** restart the API. The counts live in the API's memory and start again from zero.
 - **Under gunicorn**, each worker counts apart, so a caller can reach the number of workers times a limit before every worker refuses.
 - **A whole campus may share one address.** The limit per address (300 in 10 minutes) is set high for that; if students behind one network see "Muitas tentativas seguidas" on their first visit, raise `RATE_LIMIT_AUTH`.
+- **In production nginx limits `/api/` too**, per address: 30 requests a second with bursts of 60 (`limit_req_zone` in `deploy/nginx/nginx.conf`, `limit_req` in `app.conf`). Over it, nginx answers the same 429 `rate_limited`. To change it, edit both lines, `make -C deploy check-nginx`, commit, and deploy.
 
 ## A student's data
 
@@ -238,6 +347,12 @@ When the final text arrives: replace the bodies in both files, fill or remove ev
 ## Troubleshooting
 
 - **The `api` container never becomes healthy, and its log stops after "Started reloader process".** On an Apple M4 with Docker Desktop 27.5, OpenSSL's CPU probe dies with "Illegal instruction" when the `cryptography` package loads (`docker compose exec api /opt/venv/bin/python -X faulthandler -c "import cryptography.hazmat.bindings._rust"` shows it). `docker-compose.yml` sets `OPENSSL_armcap=0` for the container, which skips the probe; check that the line is still there. A newer Docker Desktop may not need it.
+
+- **The production stack on an Apple M4: the `api` container restarts with no log, or a `make -C deploy` command dies at once.** The same OpenSSL probe as above. Put `OPENSSL_armcap=0` in `deploy/.env`, which the API's container reads. A real server does not need it.
+
+- **A deploy ends "The new images are not healthy".** It has already started the previous images again. `docker compose -f deploy/docker-compose.yml logs api` (or `nginx`) has the reason; the script prints the last 40 lines of both.
+
+- **The app shows its maintenance screen and `/api/` answers 502 `api_unavailable`.** nginx cannot reach the API: `make -C deploy ps`, then the API's log.
 
 - **`run-code` or its tests fail with "cc is not installed".** Install a C compiler (Xcode command line tools on macOS, `gcc` on Linux), or name another one in `CODE_RUN_C_COMPILER`. The flags are `CODE_RUN_C_FLAGS`; the compiler must support `-fsanitize=address,undefined`.
 

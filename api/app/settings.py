@@ -76,6 +76,20 @@ class Settings(BaseSettings):
     # under it, at /api.
     app_base_url: str = "http://localhost:5173"
 
+    # ---- production server (gunicorn.conf.py) ----
+    # Worker processes. Each keeps its own rate-limit counts, so a caller
+    # can reach this many times a limit before every worker refuses.
+    gunicorn_workers: int = 2
+    # Seconds a worker may stay silent before gunicorn restarts it.
+    gunicorn_timeout_seconds: int = 60
+
+    # ---- error tracking ----
+    # A Sentry DSN (Sentry, or a compatible service such as GlitchTip).
+    # Without one, no error leaves the server.
+    sentry_dsn: str | None = None
+    # Share of requests traced for performance, from 0 to 1.
+    sentry_traces_sample_rate: float = 0.0
+
     # ---- auth ----
     session_token_bytes: int = 32  # 256-bit opaque session tokens
     magic_link_expire_minutes: int = 15

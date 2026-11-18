@@ -8,14 +8,17 @@ dependencies = [
     "asyncpg>=0.32.0",
     "authlib>=1.9.9",
     "fastapi>=0.115",
+    "gunicorn>=27.0.1",
     "httpx>=0.28.1",
     "loguru>=0.8.0",
     "pydantic>=2",
     "pydantic-settings>=2.16.3",
     "pyyaml>=6.0.3",
+    "sentry-sdk>=2.75.0",
     "sqlalchemy[asyncio]>=2",
     "typer>=0.29.1",
     "tzdata>=2026.6",
+    "uvicorn-worker>=0.4.0",
     "uvicorn[standard]>=0.54.0",
 ]
 
@@ -60,7 +63,12 @@ quote-style = "double"
 python_version = "3.12"
 strict = true
 plugins = ["pydantic.mypy"]
-files = ["app", "tests", "../content/tools"]
+files = ["app", "tests", "../content/tools", "gunicorn.conf.py"]
+
+# gunicorn ships no type information; only the tests import it.
+[[tool.mypy.overrides]]
+module = ["gunicorn.*"]
+ignore_missing_imports = true
 
 [dependency-groups]
 dev = [

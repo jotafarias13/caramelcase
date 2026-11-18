@@ -3,7 +3,7 @@
 
 .PHONY: help install up down logs ps migrate migration seed import-content \
 	publish demo-user types lint lint-api lint-web typecheck typecheck-api \
-	typecheck-web test test-api test-web e2e format build-web
+	typecheck-web test test-api test-web e2e format build-web check-deploy
 
 help:
 	@echo "make install    install API and web dependencies on the host"
@@ -23,7 +23,9 @@ help:
 	@echo "make typecheck  mypy and tsc"
 	@echo "make test       pytest (needs Docker for Postgres, and cc) and vitest"
 	@echo "make e2e        the Playwright test, against make up and make seed"
+	@echo "make check-deploy   shellcheck and nginx -t on the production files"
 	@echo "make format     fix what the linters can fix"
+	@echo "Production commands are in deploy/Makefile: make -C deploy help"
 
 install:
 	cd api && uv sync --locked
@@ -118,6 +120,12 @@ e2e:
 
 build-web:
 	cd web && npm run build
+
+# The production files (deploy/): the shell scripts, and each nginx
+# configuration under `nginx -t`. Needs shellcheck, openssl and Docker.
+check-deploy:
+	shellcheck deploy/*.sh deploy/scripts/*.sh deploy/certbot/*.sh
+	deploy/scripts/check_nginx.sh
 
 format:
 	cd api && uv run ruff check --fix . ../content && uv run ruff format . ../content

@@ -1,0 +1,8 @@
+# The certificate's renewal. certbot.sh installs this file as
+# /etc/cron.d/caramelcase_renew, with PROJECT_ROOT filled in. If that did
+# not work, add the line below with `sudo crontab -e`, without "root".
+# Every day at 02:00, the server's time: certbot renews only a certificate
+# that is close to expiry, and Let's Encrypt's certificates keep getting
+# shorter, so a daily check leaves room for a failed night or two.
+
+0 2 * * * root ${PROJECT_ROOT}/deploy/certbot/renew.sh >> /var/log/caramelcase-renew.log 2>&1

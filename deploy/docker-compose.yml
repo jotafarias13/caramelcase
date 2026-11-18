@@ -1,0 +1,121 @@
+# Production: Postgres, the API under gunicorn, nginx serving the web app
+# and proxying /api to the API, and certbot for TLS. Run from deploy/, with
+# the values in deploy/.env (copied from .env.example). docs/RUNBOOK.md has
+# the first deploy, later deploys, certificates and backups.
+#
+# Local development does not use this file: see ../docker-compose.yml.
+
+# Not "caramelcase", the development stack's name, so that trying this
+# file on a laptop never touches the development database.
+name: caramelcase-prod
+
+# Docker keeps each container's output in a file; without a limit it grows
+# until the disk is full.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in deploy/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in deploy/.env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+      start_interval: 2s
+    logging: *logging
+
+  api:
+    image: ${DOCKER_IMAGE_API:?set DOCKER_IMAGE_API in deploy/.env}:${DOCKER_TAG:?set DOCKER_TAG in deploy/.env}
+    # A deploy pulls the image (scripts/deploy.sh); `make build` builds it
+    # here instead, to try the stack on a laptop.
+    build:
+      context: ..
+      dockerfile: deploy/api.Dockerfile
+    restart: unless-stopped
+    # The API reads every setting from its environment (api/app/settings.py),
+    # so any tunable can be set in deploy/.env.
+    env_file: .env
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+    # No published port: the API is reached only through nginx, which sets
+    # the X-Real-IP that its rate limits trust.
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen("http://localhost:8000/api/v1/health")
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+      start_interval: 2s
+    logging: *logging
+
+  nginx:
+    image: ${DOCKER_IMAGE_WEB:?set DOCKER_IMAGE_WEB in deploy/.env}:${DOCKER_TAG:?set DOCKER_TAG in deploy/.env}
+    build:
+      context: ..
+      dockerfile: deploy/web.Dockerfile
+      args:
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_PLAUSIBLE_DOMAIN: ${VITE_PLAUSIBLE_DOMAIN:-}
+        VITE_PLAUSIBLE_SCRIPT: ${VITE_PLAUSIBLE_SCRIPT:-}
+    restart: unless-stopped
+    ports:
+      - ${HTTP_PORT:-80}:80
+      - ${HTTPS_PORT:-443}:443
+    # Only what the templates use: the image fills ${DOMAIN} in.
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in deploy/.env}
+      # The image's start-up script would print plain lines among the JSON.
+      NGINX_ENTRYPOINT_QUIET_LOGS: "1"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/app.conf:/etc/nginx/app.conf:ro
+      - ./nginx/${NGINX_CONF_FILE:?set NGINX_CONF_FILE in deploy/.env}:/etc/nginx/templates/default.conf.template:ro
+      - certbot:/etc/nginx/ssl:ro
+      - certbot_acme_challenge:/var/www/certbot:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+      start_interval: 2s
+    logging: *logging
+
+  # Run by certbot/certbot.sh and certbot/renew.sh only.
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - certbot:/etc/letsencrypt
+      - certbot_acme_challenge:/var/www/certbot
+    profiles: ["certbot"]
+    logging: *logging
+
+volumes:
+  db_data:
+  certbot:
+  certbot_acme_challenge:

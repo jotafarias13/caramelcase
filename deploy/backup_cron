@@ -1,0 +1,5 @@
+# The nightly database dump. `make backup-cron` installs this file as
+# /etc/cron.d/caramelcase_backup, with PROJECT_ROOT filled in.
+# Every day at 03:00, the server's time.
+
+0 3 * * * root ${PROJECT_ROOT}/deploy/backup.sh >> /var/log/caramelcase-backup.log 2>&1

@@ -3,9 +3,14 @@
 Call sites use loguru directly: `logger.info("message", key=value)`. The
 keyword arguments become fields of the JSON line. Inside a request every
 line also carries its request_id (see log_request).
+
+Lines written with Python's standard logging module, by gunicorn, uvicorn
+and other libraries, go through the same sink (InterceptHandler), with
+the logger's name in a `logger` field.
 """
 
 import json
+import logging
 import sys
 import time
 import traceback
@@ -45,6 +50,26 @@ def _write_json_line(message: "loguru.Message") -> None:
     sys.stdout.flush()
 
 
+class InterceptHandler(logging.Handler):
+    """Hands a record of the standard logging module to loguru."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            level: str | int = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+        logger.bind(logger=record.name).opt(exception=record.exc_info).log(
+            level, record.getMessage()
+        )
+
+
+# Loggers that come with handlers of their own, writing plain text.
+_LIBRARY_LOGGERS = ("uvicorn", "uvicorn.error")
+# uvicorn's line per request, which log_request already writes with more
+# in it. A Uvicorn worker under gunicorn turns it on.
+_SILENCED_LOGGERS = ("uvicorn.access",)
+
+
 def setup_logging() -> None:
     settings = get_settings()
     logger.remove()
@@ -54,6 +79,25 @@ def setup_logging() -> None:
         logger.add(
             sys.stdout, level=settings.log_level, format=_READABLE_FORMAT
         )
+    _route_standard_logging(settings.log_level)
+
+
+def _route_standard_logging(level: str) -> None:
+    """Send the standard logging module's records to loguru."""
+    root = logging.getLogger()
+    if not any(isinstance(h, InterceptHandler) for h in root.handlers):
+        root.addHandler(InterceptHandler())
+    root.setLevel(level)
+    for name in _LIBRARY_LOGGERS:
+        library_logger = logging.getLogger(name)
+        library_logger.handlers = []
+        library_logger.propagate = True
+    for name in _SILENCED_LOGGERS:
+        silenced_logger = logging.getLogger(name)
+        silenced_logger.handlers = []
+        silenced_logger.propagate = False
+    # Python's warnings (deprecations of libraries) become log lines too.
+    logging.captureWarnings(True)
 
 
 async def log_request(

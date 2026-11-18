@@ -13,7 +13,7 @@ src/
   features/     one directory per screen: landing, auth, onboarding, home, catalog,
                 session, summary, profile, settings, legal
   i18n/         pt-BR.json, en.json and the setup
-  lib/          theme, preferences, flags, highlight, analytics, online
+  lib/          theme, preferences, flags, highlight, analytics, monitoring, online
   test/         fixtures.ts (sample API data), mock-api.ts, render.tsx
 shots/          screenshots of the app next to the mockups
 e2e/            the Playwright test against the real stack

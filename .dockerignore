@@ -1,0 +1,31 @@
+# The images are built from the repository root (deploy/api.Dockerfile,
+# deploy/web.Dockerfile). Only what they use is sent to the build: nothing
+# else, so no .env, syllabus or questions still in the pipeline.
+*
+!api/
+!content/catalog.yaml
+!content/bank/
+!design/
+!web/
+
+# Installed or built on the host; the images install and build their own.
+**/.venv
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+**/.mypy_cache
+**/.ruff_cache
+**/*.tsbuildinfo
+**/.DS_Store
+web/dist
+web/dist-ssr
+web/test-results
+web/playwright-report
+web/shots/out
+
+# Not run in production.
+api/tests
+
+# Secrets, wherever they are.
+**/.env
+**/.env.*

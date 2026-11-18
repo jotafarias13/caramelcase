@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
 from app.db.session import engine
+from app.error_tracking import setup_error_tracking
 from app.errors import ErrorResponse, add_error_handlers
 from app.logger import log_request, setup_logging
 from app.routes import (
@@ -56,6 +57,9 @@ httpOnly cookie; a native client sends the same token as
 request over a limit is a 429 `rate_limited`, with `Retry-After` in
 seconds.
 """
+
+# Before the app exists, so that Sentry's integrations see it created.
+setup_error_tracking(get_settings())
 
 app = FastAPI(
     title="CaramelCase API",

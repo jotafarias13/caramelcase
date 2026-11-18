@@ -1,0 +1,53 @@
+# Production: https for DOMAIN, with the certificate certbot keeps in the
+# certbot volume. Chosen by NGINX_CONF_FILE in deploy/.env and rendered by
+# the nginx image into conf.d/default.conf, with ${DOMAIN} filled in.
+
+# http for DOMAIN: certbot's challenge, and a redirect to https for the rest.
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# Any other name over http, or a bare address: close the connection.
+server {
+    listen 80 default_server;
+    server_name _;
+
+    return 444;
+}
+
+# The app, over https.
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name ${DOMAIN};
+
+    ssl_certificate /etc/nginx/ssl/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/nginx/ssl/live/${DOMAIN}/privkey.pem;
+
+    # Browsers keep to https for a year. Not for subdomains, which may
+    # serve other things.
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    include /etc/nginx/app.conf;
+}
+
+# Any other name over https: close the connection.
+server {
+    listen 443 ssl default_server;
+    http2 on;
+    server_name _;
+
+    ssl_certificate /etc/nginx/ssl/live/${DOMAIN}/fullchain.pem;
+    ssl_certificate_key /etc/nginx/ssl/live/${DOMAIN}/privkey.pem;
+
+    return 444;
+}

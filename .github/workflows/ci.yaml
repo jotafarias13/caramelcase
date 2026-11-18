@@ -75,6 +75,20 @@ jobs:
       - name: Build
         run: make build-web
 
+  # The production files that no image build would catch: the shell
+  # scripts, and nginx's configurations, which the server reads from git.
+  deploy:
+    name: Deploy files
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Check the scripts and nginx's configurations
+        run: make check-deploy
+
   # What a new developer does after cloning, then the Playwright test on
   # top: make up, make seed, make e2e.
   e2e:

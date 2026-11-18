@@ -1,6 +1,6 @@
 # Architecture
 
-Each section says what exists today: V1, reviewed against the finished app in milestone 7. Milestone 8 adds the production path through nginx.
+Each section says what exists today: V1, reviewed against the finished app in milestone 7, and its production setup from milestone 8.
 
 ## Repository
 
@@ -15,7 +15,21 @@ Each section says what exists today: V1, reviewed against the finished app in mi
 
 ## Request path
 
-Today, in development: browser → Vite dev server (`:5173`) → `/api` proxied to Uvicorn (`:8000`) → FastAPI → Postgres. The browser only ever talks to one origin, so the session cookie is a first-party cookie. The production path, through nginx, is milestone 8's.
+In development: browser → Vite dev server (`:5173`) → `/api` proxied to Uvicorn (`:8000`) → FastAPI → Postgres.
+
+In production (`deploy/docker-compose.yml`), four containers on one server: browser → `nginx` (`:443`, `:80` only redirects and answers certbot's challenge) → the built web app from its own files, or `/api/` proxied to `api` (gunicorn with two Uvicorn workers on `:8000`, no published port) → `db` (Postgres 16, a named volume). `certbot` runs only to issue or renew the certificate. The `nginx` container is the web app's image: nginx with `web/dist`, and its configuration mounted from `deploy/nginx/`.
+
+Either way the browser only ever talks to one origin, so the session cookie is a first-party cookie.
+
+What nginx adds in front of the API (`deploy/nginx/app.conf`):
+
+- It overwrites `X-Real-IP` with the caller's address, which the API's rate limits trust; the API is reachable only through it.
+- A limit on `/api/` per address (30 requests a second, bursts of 60), above the API's own per route. Its 429, and its 502 when the API is down, are JSON in the API's error shape.
+- The API is looked up through Docker's DNS on each request (a variable in `proxy_pass`), so a replaced API container is found at its new address.
+- Static files: any address that is not a file gets `index.html`, a missing file under `/assets/` is a 404, Vite's hashed files are cached for a year and everything else is revalidated on each use; gzip; security headers (`nosniff`, `DENY` framing, a referrer policy, a partial CSP, HSTS over https).
+- Hosts other than `DOMAIN` get their connection closed (444).
+
+Logs: the API writes one JSON line per request and per event, gunicorn's and uvicorn's own lines included (`app/logger.py` routes the standard `logging` module into loguru). nginx writes one JSON line per request, with the API's `X-Request-ID` as `request_id`, so the two lines of a request can be joined. `docker compose logs` reads both; Docker keeps 5 files of 10 MB per container.
 
 In the web app, a screen never calls `fetch` itself:
 
@@ -82,6 +96,9 @@ Inside the API a request passes through, in order:
 | `app/providers/` | Outside services behind an interface with a stand-in: `email` (console, SMTP) and `google` (mock, OAuth). Billing, ads and the tutor arrive in milestone 10 |
 | `app/db/rows.py` | `ensure_row`: get-or-create with a row lock, for the one-row-per-user-and-something tables |
 | `app/cli.py` | Commands run by hand, make and cron: `seed`, `import-content`, `publish-subjects`, `demo-user`, `openapi` |
+| `app/logger.py` | JSON or readable log lines, the request log, and the standard `logging` module routed into the same sink |
+| `app/error_tracking.py` | Sentry, started only when `SENTRY_DSN` is set, without personal data or request bodies |
+| `gunicorn.conf.py` | The production server: Uvicorn workers, their number and timeout from settings, gunicorn's lines through `app/logger.py` |
 
 ## Web layout
 
@@ -96,7 +113,7 @@ Inside the API a request passes through, in order:
 | `src/components/` | Shared components (`AnswerOption`, `CodeBlock`, `TopicNode`, `StreakCard`, `StateScreen` and others); `ui/` holds the primitives of `design/README.md` |
 | `src/api/` | `client.ts` (the typed fetch client and `ApiError`), `queries.ts` (every API call as a TanStack Query hook), `types.ts`; `openapi.json` and `schema.d.ts` are written by `make types` and committed |
 | `src/i18n/` | `pt-BR.json`, `en.json` and the setup. All interface text is here |
-| `src/lib/` | Theme, language and timezone preferences, flags, the syntax highlighter, product events, `cn()` |
+| `src/lib/` | Theme, language and timezone preferences, flags, the syntax highlighter, product events, `cn()`, and `monitoring.ts`: Sentry and Plausible, built in only when their keys are set at build time |
 | `src/test/` | Sample API data (`fixtures.ts`), the mock API and the render helpers of the component tests |
 | `src/prerender.tsx` | Build-time entry that renders the landing page to HTML |
 | `src/styles/index.css` | Tailwind entry and base rules. No token is defined here |

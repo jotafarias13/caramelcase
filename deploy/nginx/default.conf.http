@@ -1,0 +1,19 @@
+# Plain http: the production stack on a laptop, or on a server that has no
+# certificate yet. Chosen by NGINX_CONF_FILE in deploy/.env and rendered by
+# the nginx image into conf.d/default.conf, with ${DOMAIN} filled in.
+
+# The app, for requests to DOMAIN.
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    include /etc/nginx/app.conf;
+}
+
+# Any other name, or a bare address: close the connection.
+server {
+    listen 80 default_server;
+    server_name _;
+
+    return 444;
+}

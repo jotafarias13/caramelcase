@@ -1,0 +1,40 @@
+name: Deploy to production
+
+# Manual: Actions, "Deploy to production", Run workflow, on main, after
+# "Build and publish images" has published the commit. On the server it
+# pulls main and runs deploy/scripts/deploy.sh: pull the images, check
+# nginx's configuration, migrate, restart, wait until healthy, and roll the
+# images back if they are not. docs/RUNBOOK.md lists the secrets.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to the server
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.2
+        # Passed to the server through `envs`, not written into the script.
+        env:
+          DOCKER_HUB_USERNAME: ${{ secrets.DOCKER_HUB_USERNAME }}
+          DOCKER_HUB_TOKEN: ${{ secrets.DOCKER_HUB_TOKEN }}
+          PROJECT_ROOT: ${{ secrets.PROJECT_ROOT }}
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.VM_SSH_PRIVATE_KEY }}
+          envs: DOCKER_HUB_USERNAME,DOCKER_HUB_TOKEN,PROJECT_ROOT
+          command_timeout: 15m
+          script: |
+            set -e
+            cd "$PROJECT_ROOT"
+            echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+            git pull --ff-only origin main
+            ./deploy/scripts/deploy.sh

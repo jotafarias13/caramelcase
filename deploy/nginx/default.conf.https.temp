@@ -1,0 +1,16 @@
+# The first certificate only: deploy/certbot/certbot.sh starts nginx with
+# this file, which needs neither a certificate nor the API, and serves
+# certbot's challenge to Let's Encrypt.
+
+server {
+    listen 80;
+    server_name ${DOMAIN};
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
