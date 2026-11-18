@@ -13,7 +13,7 @@ These override `docs/initial-spec.md` where they differ.
 - **Tooling.** uv manages Python, with ruff and pytest.
 - **Code language in questions.** C for Introdução à Programação (the syllabus covers pointers, structs, enums and unions). In Estruturas de Dados, C for the pointer and dynamic-allocation topics and Python elsewhere. SQL for Banco de Dados.
 - **Estruturas de Dados scope.** The syllabus lists EDB I and EDB II; both merge into the single launch subject, about 16 topics.
-- **nginx and certbot run as containers**, following the owner's examples in `../kai-app` and `../kai-api`, not on the host. Add the `/api` proxy, which neither example has.
+- **nginx and certbot run as containers**, following the owner's two reference projects (a web app and an API), not on the host. Add the `/api` proxy, which neither example has.
 - **Onboarding step 2.** University and course are stored as two optional text fields on `users`, included in export and delete.
 - **Topic rows on Home.** Sessions stay per subject in V1. Tapping a topic starts a subject session.
 - **Commits.** One commit per milestone, straight to `main`, message `feat:` / `fix:` / `chore:` plus a short imperative description. Push only when the owner asks.
@@ -54,7 +54,7 @@ The owner saw these and did not object.
 - **`web/public/favicon.svg` is a byte-for-byte copy of `design/assets/favicon.svg`**, the one design file that is copied: `index.html` needs a static URL for it. The icon export in milestone 6 supersedes it.
 - **The sample page is temporary.** `web/src/features/sample/SamplePage.tsx` proves tokens, theme, components and the `/api` proxy. Its Portuguese copy is hardcoded; the landing page replaces it in milestone 6, when copy moves to the i18n files.
 - **Frontend libraries arrive with their first use.** React Router, TanStack Query and react-i18next are not installed yet.
-- **Tool versions.** Vite 7, TypeScript 5.9 and Vitest 4, the lines the owner's `kai-app` runs on, rather than the newest majors: typescript-eslint does not accept TypeScript 7 yet. ESLint is 10, because 9 is no longer supported. ESLint and Prettier use `kai-app`'s rules.
+- **Tool versions.** Vite 7, TypeScript 5.9 and Vitest 4, the lines the owner's reference web app runs on, rather than the newest majors: typescript-eslint does not accept TypeScript 7 yet. ESLint is 10, because 9 is no longer supported. ESLint and Prettier use the reference web app's rules.
 - **Open, not decided: web fonts.** `tokens.css` loads Geist and JetBrains Mono from Google Fonts, and it is consumed unchanged, so every visit makes a request to Google and the fonts are missing offline. Self-hosting them is a question for the PWA work in milestone 6.
 
 ### API
@@ -66,12 +66,12 @@ The owner saw these and did not object.
 - **The error shape is in place for every response**: `AppError` for routes, and handlers that convert unknown routes, invalid bodies and unexpected exceptions. The code of a framework error is its HTTP status name in snake case (`not_found`); an invalid body is `validation_error` with the first failing field in the message.
 - **`GET /api/v1/health` answers 503 `database_unavailable`** when `SELECT 1` fails.
 - **API docs are served at `/api/v1/docs`**, the schema at `/api/v1/openapi.json`, so everything sits behind the one `/api` proxy.
-- **Lint and types.** ruff with `kai-api`'s rule set and 79-column lines, plus `UP` and `B`; mypy in strict mode with the pydantic plugin.
+- **Lint and types.** ruff with the reference API's rule set and 79-column lines, plus `UP` and `B`; mypy in strict mode with the pydantic plugin.
 - **`api/app/cli.py` is not created yet.** It arrives with its first command in milestone 2.
 
 ### Tests, tooling, CI
 
-- **API tests use a real Postgres 16 started by testcontainers**, once per run and only when a test asks for the `database` fixture, so unit tests need no Docker. `TEST_DATABASE_URL` points the tests at a server that is already running. This is `kai-api`'s approach; the rolled-back transaction per test arrives with the schema in milestone 2.
+- **API tests use a real Postgres 16 started by testcontainers**, once per run and only when a test asks for the `database` fixture, so unit tests need no Docker. `TEST_DATABASE_URL` points the tests at a server that is already running. This is the reference API's approach; the rolled-back transaction per test arrives with the schema in milestone 2.
 - **Local compose uses stock images and no development Dockerfiles.** The API runs in the uv image and the web app in the Node image, each with the source bind-mounted and its dependencies installed at start into a named volume, apart from the host's `.venv` and `node_modules`. Compose needs no `.env`: every value has a default.
 - **`make lint`, `make typecheck` and `make test` run on the host** with uv and npm. CI calls the same targets, split into an API job and a web job, and also builds the web app.
 - **CI runs on every push to any branch.** It could not be observed yet: nothing has been pushed.
@@ -117,7 +117,7 @@ The owner saw these and did not object.
 - **Migration files may be 120 columns wide** (`versions/ruff.toml`), so a table reads one column per line. The rest of the code stays at 79.
 - **The drift test is `alembic check`**, run by pytest against the migrated test database. A second test removes a column and expects the check to fail, so a broken check cannot pass silently.
 - **Tests run Alembic and the CLI as separate processes**, the way a deploy does, and build the test database with `alembic upgrade head`. Tests that migrate or commit for real get a scratch database of their own, created and dropped on the same server.
-- **The per-test rollback from `kai-api` is in place**: a test's `session` and each request's session share one transaction that is never committed.
+- **The per-test rollback from the reference API is in place**: a test's `session` and each request's session share one transaction that is never committed.
 - **`make migrate`, `make seed` and `make migration` run inside the `api` container**, against the docker compose database, unlike the checks, which run on the host. They need no `DATABASE_URL` on the host and follow whatever ports `.env` sets.
 
 ### Seeds and the catalog
@@ -530,56 +530,56 @@ The owner approved the pilot on 2026-11-17 and settled what it had left open.
 
 ### Layout and images
 
-- **Everything for production is in `deploy/`, with its own `.env` and `Makefile`.** The root `Makefile` stays the developer's, plus `make check-deploy`; on the server every command is `make -C deploy <target>`. kai keeps one Makefile per repository, which here would mix two stacks.
-- **Two images, `<user>/<repository>-api` and `-web`**, where each kai repository has one. Both are built from the repository root through an allowlist `.dockerignore` (kai-app has none), so nothing else reaches a build: no `.env`, no syllabus, no question still in `content/work/`.
+- **Everything for production is in `deploy/`, with its own `.env` and `Makefile`.** The root `Makefile` stays the developer's, plus `make check-deploy`; on the server every command is `make -C deploy <target>`. The reference projects keep one Makefile per repository, which here would mix two stacks.
+- **Two images, `<user>/<repository>-api` and `-web`**, where each reference project has one. Both are built from the repository root through an allowlist `.dockerignore` (the reference web app has none), so nothing else reaches a build: no `.env`, no syllabus, no question still in `content/work/`.
 - **The API's image holds `content/catalog.yaml` and `content/bank/`**, so `seed` and `import-content` on the server read the content of the commit that built the code. The tools and the tests stay out.
-- **The API runs gunicorn from the virtualenv directly, as a user without rights.** kai's `uv run gunicorn` checks the lock at every start. `ENVIRONMENT=production` and `LOG_JSON=true` are set in the image.
-- **The worker class is `uvicorn_worker.UvicornWorker`, from the `uvicorn-worker` package.** kai uses `uvicorn.workers.UvicornWorker`, which uvicorn 0.54 marks deprecated and points to that package.
+- **The API runs gunicorn from the virtualenv directly, as a user without rights.** The reference API's `uv run gunicorn` checks the lock at every start. `ENVIRONMENT=production` and `LOG_JSON=true` are set in the image.
+- **The worker class is `uvicorn_worker.UvicornWorker`, from the `uvicorn-worker` package.** The reference API uses `uvicorn.workers.UvicornWorker`, which uvicorn 0.54 marks deprecated and points to that package.
 - **gunicorn 27's control socket is off.** Nothing uses `gunicornc`, and the socket's default place is the home directory the image's user does not have: it logged an error at every start.
-- **Two new settings: `gunicorn_workers` (2) and `gunicorn_timeout_seconds` (60).** kai runs 3 workers with a 6-minute timeout. Two, because each worker counts the rate limits apart and the server is small; no request here takes more than a second.
-- **Base images.** The API on `ghcr.io/astral-sh/uv:python3.12-bookworm-slim`, as in development. The web app built on `node:24-slim`, as in development (glibc: Tailwind, Rollup and Lightning CSS ship native binaries, and musl builds of them are where npm's optional dependencies go wrong), and served by `nginx:1.30-alpine`, the stable line pinned to its minor version (kai: `nginx:alpine` and `nginx:latest`). `postgres:16-alpine`; `certbot/certbot:latest` as kai.
+- **Two new settings: `gunicorn_workers` (2) and `gunicorn_timeout_seconds` (60).** The reference API runs 3 workers with a 6-minute timeout. Two, because each worker counts the rate limits apart and the server is small; no request here takes more than a second.
+- **Base images.** The API on `ghcr.io/astral-sh/uv:python3.12-bookworm-slim`, as in development. The web app built on `node:24-slim`, as in development (glibc: Tailwind, Rollup and Lightning CSS ship native binaries, and musl builds of them are where npm's optional dependencies go wrong), and served by `nginx:1.30-alpine`, the stable line pinned to its minor version (the reference projects: `nginx:alpine` and `nginx:latest`). `postgres:16-alpine`; `certbot/certbot:latest` as in the reference projects.
 - **The API's image is 107 MB compressed**, 345 MB unpacked, 43 of them uv itself. Not split into stages: not worth the extra file.
 
 ### The compose file
 
-- **nginx is the web app's image** (kai-app's pattern): nginx with `web/dist`, one container that serves the files and proxies `/api`. Its configuration is mounted from `deploy/nginx/` (kai's pattern), so it comes from the clone, not the image; `deploy.sh` runs `nginx -t` on it before anything else.
-- **`nginx.conf` is replaced whole.** The image's own writes every request in its "main" format to the container's output, and a second `access_log` at the same level would write each request twice. It holds what every mode shares (log format, gzip, the rate limit's zone, the cache rules, the resolver, a health server); `app.conf` holds the app's locations and is included by both the http and https templates, so the app's server block is written once. The three templates keep kai's names and roles.
+- **nginx is the web app's image** (the reference web app's pattern): nginx with `web/dist`, one container that serves the files and proxies `/api`. Its configuration is mounted from `deploy/nginx/` (the reference projects' pattern), so it comes from the clone, not the image; `deploy.sh` runs `nginx -t` on it before anything else.
+- **`nginx.conf` is replaced whole.** The image's own writes every request in its "main" format to the container's output, and a second `access_log` at the same level would write each request twice. It holds what every mode shares (log format, gzip, the rate limit's zone, the cache rules, the resolver, a health server); `app.conf` holds the app's locations and is included by both the http and https templates, so the app's server block is written once. The three templates keep the reference projects' names and roles.
 - **Postgres is a container of the same compose file**, in a named volume, which the spec allows. A managed database means editing the compose file: remove `db`, the API's `depends_on` and its `DATABASE_URL` line, and set `DATABASE_URL` in `deploy/.env`.
 - **`DATABASE_URL` is built from the `POSTGRES_*` values**, so the password must be letters and digits; `.env.example` says so and suggests `openssl rand -hex 24`.
-- **The API receives the whole `deploy/.env`** (`env_file`, as kai), so any tunable can be set there; nginx receives `DOMAIN` only.
+- **The API receives the whole `deploy/.env`** (`env_file`, as in the reference projects), so any tunable can be set there; nginx receives `DOMAIN` only.
 - **The faults of the examples, fixed**: healthchecks on all three services (nginx's on a server that listens on the container's loopback only); `restart: unless-stopped`, without which a reboot of the server leaves the app down; Docker's logs rotated at 5 files of 10 MB per container, where the default keeps everything until the disk is full; gzip, cache rules and security headers; a `.dockerignore`; and `certbot.sh`'s `NGINX_CONF_FILE` override, now the variable compose reads.
 - **The project is named `caramelcase-prod`**, so the stack tried on a laptop cannot use the development stack's database volume.
-- **Both `image:` and `build:`** on `api` and `nginx`: a deploy pulls, `make -C deploy build` builds on a laptop. kai keeps a second compose file for that.
+- **Both `image:` and `build:`** on `api` and `nginx`: a deploy pulls, `make -C deploy build` builds on a laptop. The reference projects keep a second compose file for that.
 - **The published ports are settings** (`HTTP_PORT`, `HTTPS_PORT`), for a laptop where 80 is taken.
 
 ### nginx
 
-- **The access log is JSON on the container's output**, where kai writes it to a file inside the container, which `docker compose logs` never shows and a new container loses. It adds `host`, `upstream_time` and `request_id` (the API's `X-Request-ID`, so nginx's line and the API's line of a request can be joined), writes the numbers as numbers and drops `remote_user`. The error log stays plain text, from warnings up: nginx cannot write it as JSON.
-- **The limit per address covers `/api/` only: 30 requests a second with bursts of 60.** kai limits everything at 10 a second with bursts of 10, which on static files would refuse part of a first visit (about 40 files). The numbers are in nginx's configuration, not in `settings.py`, which nginx cannot read; changing them is a commit and a deploy. Placeholders, like the API's limits.
+- **The access log is JSON on the container's output**, where the reference projects write it to a file inside the container, which `docker compose logs` never shows and a new container loses. It adds `host`, `upstream_time` and `request_id` (the API's `X-Request-ID`, so nginx's line and the API's line of a request can be joined), writes the numbers as numbers and drops `remote_user`. The error log stays plain text, from warnings up: nginx cannot write it as JSON.
+- **The limit per address covers `/api/` only: 30 requests a second with bursts of 60.** The reference projects limit everything at 10 a second with bursts of 10, which on static files would refuse part of a first visit (about 40 files). The numbers are in nginx's configuration, not in `settings.py`, which nginx cannot read; changing them is a commit and a deploy. Placeholders, like the API's limits.
 - **nginx's own errors on `/api/` are JSON in the API's error shape**, as the spec asks of every error: its 429 as `rate_limited` with `Retry-After: 1`, and a 502 or 504 as 502 `api_unavailable`, a new code. The web app shows the maintenance screen for it, as for any 502.
 - **The API's address is looked up through Docker's DNS on each request**, by putting it in a variable for `proxy_pass`. A deploy that changes only the API's image recreates only that container, and nginx would otherwise keep sending to the old address. Tried: a container took the API's old address and nginx found the new one.
 - **Caching.** Vite's files in `/assets/` are cached for a year as immutable; everything else, `index.html`, the service worker, the manifest and the icons included, is `no-cache`, revalidated with its ETag. nginx adds nothing to the API's responses. A missing file under `/assets/` is a 404, not the app's HTML. The manifest gets `application/manifest+json`, which nginx's types lack.
 - **Security headers:** `nosniff`, `X-Frame-Options: DENY`, `strict-origin-when-cross-origin`, a `Permissions-Policy` that turns off camera, microphone and location, a partial Content Security Policy (`frame-ancestors`, `base-uri`, `object-src`), and over https HSTS for a year, without subdomains or preload, which are hard to take back. No `script-src`: `index.html` has two inline scripts (the theme before the first paint, and the one that empties the pre-rendered page), whose hashes would have to follow every change of the file, and Google Fonts and the optional services would need listing. Left open below.
 - **HTTP/2 over https**, and `server_tokens off`.
-- **No `www.`**: the certificate and the server are for `DOMAIN` only, as in kai-api (kai-app also serves `www.`). Adding it is a second `-d` in `certbot.sh` and a redirect server.
-- **The http template also closes other names with 444**, which kai's http files do not.
+- **No `www.`**: the certificate and the server are for `DOMAIN` only, as in the reference API (the reference web app also serves `www.`). Adding it is a second `-d` in `certbot.sh` and a redirect server.
+- **The http template also closes other names with 444**, which the reference projects' http files do not.
 
 ### Certificates
 
-- **`certbot.sh`** starts nginx alone (`--no-deps`) with the temporary configuration through compose's own variable, and removes it with `docker compose rm --stop --force`. kai-app's export of `NGINX_CONF_FILE` is never read, since its cert compose file names the template itself.
-- **The renewal script needs no rendering**: it finds `deploy/` from its own path. Only the cron line is a template, filled with `PROJECT_ROOT`. kai renders the script into `~/.cron/` and the cron line says `~`, which cron reads as root's home whoever ran the script.
-- **The renewal runs every day at 02:00**, not weekly as in kai. certbot renews only a certificate near its expiry, and Let's Encrypt keeps shortening their lifetime.
+- **`certbot.sh`** starts nginx alone (`--no-deps`) with the temporary configuration through compose's own variable, and removes it with `docker compose rm --stop --force`. The reference web app's export of `NGINX_CONF_FILE` is never read, since its cert compose file names the template itself.
+- **The renewal script needs no rendering**: it finds `deploy/` from its own path. Only the cron line is a template, filled with `PROJECT_ROOT`. The reference projects render the script into `~/.cron/` and the cron line says `~`, which cron reads as root's home whoever ran the script.
+- **The renewal runs every day at 02:00**, not weekly as in the reference projects. certbot renews only a certificate near its expiry, and Let's Encrypt keeps shortening their lifetime.
 - **Cron files are named with underscores** (`caramelcase_renew`, `caramelcase_backup`): Debian's cron skips a file in `/etc/cron.d` whose name has a dot.
 
 ### Deploys
 
-- **`deploy/scripts/deploy.sh` keeps kai's backup tag and rollback**, and the workflow calls it rather than holding a copy of it, as kai's `deploy.yaml` does. It waits for the healthchecks (`up --wait`) where kai counts running containers, which a container that restarts in a loop passes; checks nginx's configuration before anything; runs the migrations and `seed` with the new API image between the pull and the start, which is the explicit migration step the spec asks for; and removes dangling images after a deploy that worked. A failure before the start leaves the running containers alone and puts the old tags back.
+- **`deploy/scripts/deploy.sh` keeps the reference projects' backup tag and rollback**, and the workflow calls it rather than holding a copy of it, as their `deploy.yaml` does. It waits for the healthchecks (`up --wait`) where they count running containers, which a container that restarts in a loop passes; checks nginx's configuration before anything; runs the migrations and `seed` with the new API image between the pull and the start, which is the explicit migration step the spec asks for; and removes dangling images after a deploy that worked. A failure before the start leaves the running containers alone and puts the old tags back.
 - **`import-content` and `publish-subjects` are not part of a deploy.** Importing retires what left the files, and the runbook asks for a dry run first; publishing waits for the owner's hand check. Both are one command on the server.
 - **A rollback does not undo migrations.** The runbook asks that each migration let the previous API run on the new schema.
 - **The deploy workflow passes the Docker Hub token through the SSH action's `envs`** instead of writing the secret into the script, and pulls with `--ff-only`.
-- **The build workflow runs CI first** (kai-api's pattern), builds on `main` only, both images as a matrix with a build cache each, tagged `main` and `main-<short sha>`. kai's `develop` tags are left out: there is no `develop` branch. The web app's optional keys are passed as build arguments from secrets.
+- **The build workflow runs CI first** (the reference API's pattern), builds on `main` only, both images as a matrix with a build cache each, tagged `main` and `main-<short sha>`. The reference projects' `develop` tags are left out: there is no `develop` branch. The web app's optional keys are passed as build arguments from secrets.
 - **CI has a new job, "Deploy files"**: shellcheck on the scripts and `nginx -t` on the three configurations with a throwaway certificate (`make check-deploy`). The server reads nginx's configuration from git, so no image build would catch a mistake in it. CI builds no images: the build workflow does.
-- **`install_server.sh` is kai's three install scripts in one**, run as root rather than calling `sudo`, with git and envsubst added. Tried in an Ubuntu 24.04 container, without starting Docker there.
+- **`install_server.sh` is the reference projects' three install scripts in one**, run as root rather than calling `sudo`, with git and envsubst added. Tried in an Ubuntu 24.04 container, without starting Docker there.
 
 ### Backups
 
@@ -592,7 +592,7 @@ The owner approved the pilot on 2026-11-17 and settled what it had left open.
 - **The standard `logging` module goes through loguru** (`InterceptHandler` in `app/logger.py`): the lines of gunicorn, uvicorn and libraries, and Python's warnings, are JSON with a `logger` field. uvicorn's own line per request is silenced, since `log_request` writes a fuller one.
 - **Error tracking is Sentry's SDK**, on with `SENTRY_DSN` for the API and `VITE_SENTRY_DSN` for the web app; GlitchTip accepts the same. Nothing that identifies a student is sent: the API sends no personal data and no request bodies (a sign-in request holds an email address); the web app collects no user, cookies, headers, bodies or query strings, and strips queries itself as well, since a sign-in link carries its token in one. Sentry's browser SDK 11 has `dataCollection` where older versions had `sendDefaultPii`. Tracing is off (`sentry_traces_sample_rate` 0).
 - **Analytics is Plausible**, on with `VITE_PLAUSIBLE_DOMAIN` (and `VITE_PLAUSIBLE_SCRIPT` for a self-hosted Plausible or a site's own script): no cookies, so no consent banner to design.
-- **The web app's keys are read at build time**, as kai-app does with its API address: an image is built for one set of keys, which are public anyway. While a key is empty the build holds none of that service's code; checked: a build without keys has no file that mentions either, and the service worker precaches nothing of Sentry.
+- **The web app's keys are read at build time**, as the reference web app does with its API address: an image is built for one set of keys, which are public anyway. While a key is empty the build holds none of that service's code; checked: a build without keys has no file that mentions either, and the service worker precaches nothing of Sentry.
 - **The privacy policy does not name either service.** Switching one on means adding it there; the runbook says so.
 
 ### What was tried
@@ -605,3 +605,10 @@ On 2026-11-17, on an M4 with Docker Desktop 27.5, with both images built locally
 - **A full Content Security Policy** with `script-src`.
 - **Serving `www.`** as well as the domain.
 - **The healthcheck's request every 30 seconds is in the API's log**: 2,880 lines a day.
+
+
+## After milestone 8
+
+- **CI's end-to-end job failed on the first two pushes**, at `npm ci` on the runner: `EACCES` creating a folder under `web/node_modules`. `make up` had run first, and the web container mounts a volume at `web/node_modules`; on Linux, Docker creates a missing mount point inside a bind mount as root, so the runner's user could not write into it. Docker Desktop on macOS gives the folder to the user, which is why the job passed when run locally. `make up` now creates `web/node_modules` before starting the stack. Moving `npm ci` before `make up` in the workflow would also have fixed CI, but not a Linux developer who runs `make up` and then `make install`. Not yet seen passing in CI: that needs a push.
+- **The owner's reference projects are no longer named anywhere in the repository**, at the owner's request. `CLAUDE.md` describes them without names; the entries above say "the reference web app", "the reference API" or "the reference projects". Earlier commits still name them.
+- **A root `README.md`, `docs/DEPLOY.md` and `docs/PROJECT-MAP.md`**: how to run the app and show it, what to set up before the first deploy, and a tour of the repository. `docs/DEPLOY.md` points at the runbook for every procedure rather than repeating it. Writing it showed that the runbook's first deploy needed the images published before the certificate step, not only before the deploy, since `certbot.sh` starts nginx from the web image; the runbook now says so.

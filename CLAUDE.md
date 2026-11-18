@@ -24,5 +24,5 @@ Push only when the owner asks. `main` always passes its tests.
 - **Python:** uv runs everything, with ruff, pytest and mypy.
 - **Business rules** live as pure, unit-tested functions in `api/app/domain/`; every tunable number lives in `api/app/settings.py`.
 - **Content generation and blind solving** run in subagents. A blind solver is a fresh agent that has seen only the stripped file.
-- **`../kai-app` and `../kai-api`** are the owner's reference projects for nginx, certbot, deploy workflows and logging. Read them, leave them unchanged.
+- **The owner's reference projects**, a web app and an API in folders beside this repository, are the examples for nginx, certbot, deploy workflows and logging. Read them, leave them unchanged, and never name them in this repository.
 - **`syllabus-v1.txt`** stays out of the repo.

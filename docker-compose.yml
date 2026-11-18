@@ -86,6 +86,9 @@ services:
     image: node:24-slim
     working_dir: /app/web
     # node_modules lives in a volume: the host's holds macOS binaries.
+    # On Linux, start with `make up`, which creates web/node_modules
+    # first; otherwise Docker creates it as root and the host's npm cannot
+    # write into it.
     command: sh -c "npm install --no-audit --no-fund && npm run dev -- --host 0.0.0.0"
     environment:
       API_PROXY_TARGET: http://api:8000

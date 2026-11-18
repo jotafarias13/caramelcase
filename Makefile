@@ -33,7 +33,11 @@ install:
 
 # Returns once every service is healthy: the first start installs the
 # API's and the web app's dependencies, which takes a minute or two.
+# web/node_modules is created first because the web container mounts a
+# volume there: on Linux, Docker would otherwise create the folder as
+# root, and `npm ci` on the host could not write into it afterwards.
 up:
+	mkdir -p web/node_modules
 	docker compose up -d --wait
 	@echo "The app is at http://localhost:5173 (WEB_PORT in .env changes it)."
 

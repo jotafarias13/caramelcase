@@ -164,15 +164,15 @@ Every production command is a target of `deploy/Makefile`: `make -C deploy help`
 
 ### First deploy
 
-Once, on a new server:
+Once, on a new server. `docs/DEPLOY.md` lists what to have ready first: accounts, secrets, the deploy user on the server.
 
 1. **The server.** Ubuntu with ports 22, 80 and 443 open. `sudo deploy/scripts/install_server.sh` (after cloning, step 3) installs Docker with compose, git, make and envsubst.
 2. **The domain.** An A record from `DOMAIN` to the server's address. Only `DOMAIN` gets a certificate; `www.` is not served.
 3. **The clone.** `git clone <repository> /opt/caramelcase` (or another place: `PROJECT_ROOT` in `deploy/.env` must say where). A private repository needs a deploy key on the server.
 4. **The settings.** `cp deploy/.env.example deploy/.env` and fill it in. At least: the two image names, `DOMAIN`, `CERTBOT_EMAIL`, `PROJECT_ROOT`, `POSTGRES_PASSWORD` (`openssl rand -hex 24`), `APP_BASE_URL` and `CORS_ORIGINS` (`https://<DOMAIN>`), and SMTP, without which nobody can sign in by email. Google sign-in is optional. Values with spaces go in double quotes: the scripts load the file with bash.
 5. **Docker Hub.** `docker login`, if the images are private.
-6. **The certificate.** `sudo make -C deploy certificate`: nginx answers Let's Encrypt's challenge, certbot gets the certificate, and a cron job to renew it is installed (see "TLS certificates").
-7. **The deploy.** `make -C deploy deploy`, or the "Deploy to production" workflow once its secrets are set. The images must have been published first ("Build and publish images").
+6. **The certificate.** The images must have been published first ("Build and publish images"), since this step runs nginx from the web image. `sudo make -C deploy certificate`: nginx answers Let's Encrypt's challenge, certbot gets the certificate, and a cron job to renew it is installed (see "TLS certificates").
+7. **The deploy.** `make -C deploy deploy`, or the "Deploy to production" workflow once its secrets are set.
 8. **The questions.** `make -C deploy import-content args=--dry-run`, then `make -C deploy import-content`. Students see nothing until a subject is published: after the hand check of about 50 questions, `make -C deploy publish s="introducao-a-programacao"` (see "Publishing a subject").
 9. **Backups.** `sudo make -C deploy backup-cron` installs the nightly dump (see "Backup and restore").
 10. **A look.** Open `https://<DOMAIN>`; `make -C deploy ps` shows three services healthy.
@@ -202,7 +202,7 @@ A rollback puts back images, not the schema: migrations stay applied. Write each
 
 ### The workflows' secrets
 
-GitHub, Settings, Secrets and variables, Actions. The names are those of the owner's kai repositories.
+GitHub, Settings, Secrets and variables, Actions. The names are those of the owner's reference projects.
 
 | Secret | Used by | What it is |
 | --- | --- | --- |
@@ -355,5 +355,7 @@ When the final text arrives: replace the bodies in both files, fill or remove ev
 - **The app shows its maintenance screen and `/api/` answers 502 `api_unavailable`.** nginx cannot reach the API: `make -C deploy ps`, then the API's log.
 
 - **`run-code` or its tests fail with "cc is not installed".** Install a C compiler (Xcode command line tools on macOS, `gcc` on Linux), or name another one in `CODE_RUN_C_COMPILER`. The flags are `CODE_RUN_C_FLAGS`; the compiler must support `-fsanitize=address,undefined`.
+
+- **On Linux, `npm ci` or `make install` fails with `EACCES` under `web/node_modules`.** The stack was started with `docker compose up` before that folder existed, so Docker created it as root to mount the web container's volume there. `make down`, `sudo rm -rf web/node_modules`, then start the stack again with `make up`, which creates the folder as you first. CI's end-to-end job failed this way until `make up` did that.
 
 - **API tests fail to start Postgres with a Docker socket mount error.** testcontainers mounts the Docker socket into its helper container. `api/tests/conftest.py` sets `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock`, which is right for Docker Desktop; set the variable yourself if your Docker uses another path.

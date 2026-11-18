@@ -11,7 +11,7 @@ Each section says what exists today: V1, reviewed against the finished app in mi
 | `content/` | The catalog, the question bank (JSONL), the prompts and the tools of the content pipeline |
 | `design/` | The UI handoff: tokens, Tailwind theme, mockups, assets, copy. Read-only for the build |
 | `deploy/` | Production Dockerfiles, compose file, nginx, certbot, backup |
-| `docs/` | The spec, the plan, decisions, this file, the runbook |
+| `docs/` | The spec, the plan, decisions, this file, the runbook, the deploy checklist (`DEPLOY.md`) and a tour of the repository (`PROJECT-MAP.md`) |
 
 ## Request path
 

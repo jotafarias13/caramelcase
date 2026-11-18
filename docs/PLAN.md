@@ -11,13 +11,13 @@ The changes to the spec agreed with the owner, and the defaults chosen where spe
 ## Reference material
 
 - `syllabus-v1.txt` (repo root, never committed): syllabus for the three launch subjects.
-- `../kai-app` and `../kai-api`: the owner's working projects, read-only. Take from them:
-  - `nginx/default.conf.http`, `default.conf.https`, `default.conf.https.temp` in both: envsubst templates, JSON access log, 444 default servers, ACME webroot location. `kai-api` adds the upstream, proxy headers and `limit_req`.
+- The owner's reference projects, a web app and an API in folders beside this repository: read-only. Take from them:
+  - `nginx/default.conf.http`, `default.conf.https`, `default.conf.https.temp` in both: envsubst templates, JSON access log, 444 default servers, ACME webroot location. The API's adds the upstream, proxy headers and `limit_req`.
   - `certbot/certbot.sh`, `template.renew.sh`, `renew_cron` and the `certbot` compose profile with its two named volumes.
-  - `.github/workflows/`: `ci.yaml` (kai-api), `build_publish.yaml` and `deploy.yaml` (Docker Hub image, SSH deploy with health check and rollback), all manual except CI.
-  - `kai-api/app/config/logger.py`, `request_info.py` and the middleware in `app/main.py` for logging; `tests/conftest.py` and `tests/support/` for the test-database approach (one outer transaction rolled back per test).
+  - `.github/workflows/`: `ci.yaml` (the API's), `build_publish.yaml` and `deploy.yaml` (Docker Hub image, SSH deploy with health check and rollback), all manual except CI.
+  - The API's `app/config/logger.py`, `request_info.py` and the middleware in `app/main.py` for logging; `tests/conftest.py` and `tests/support/` for the test-database approach (one outer transaction rolled back per test).
   - `Makefile` targets and `scripts/` in both.
-- Known faults in the examples to fix, not copy: the unused `NGINX_CONF_FILE` export in `certbot.sh`, no `.dockerignore` in `kai-app`, no gzip, cache or security headers, no compose healthchecks.
+- Known faults in the examples to fix, not copy: the unused `NGINX_CONF_FILE` export in `certbot.sh`, no `.dockerignore` in the web app's, no gzip, cache or security headers, no compose healthchecks.
 
 ## Environment
 
@@ -106,16 +106,16 @@ What milestone 7 builds on: the whole flow was played against the real API by a 
 - [x] From a clean clone, two commands lead to a playable session. (`make up` and `make seed`: 12 and 26 seconds on a fresh copy with fresh volumes, then the Playwright test passed against it.)
 - [x] V1 works end to end in both languages with every flag off. (The Playwright test, and a throwaway walk through sign-in, export, the legal pages, a rate limit and deletion in both languages. It found and fixed one bug: an account created by signing in before playing was always Portuguese.)
 
-What milestone 8 builds on: the API trusts `X-Real-IP` for the rate limit per address, so nginx must set it (`proxy_set_header X-Real-IP $remote_addr`, as `kai-api` does) and the API container must publish no port. Rate-limit counts live in each gunicorn worker, so the number of workers multiplies the limits. The privacy policy promises backups kept 14 days. The Playwright test runs against the dev stack; it can be pointed at the production stack with `E2E_BASE_URL`.
+What milestone 8 builds on: the API trusts `X-Real-IP` for the rate limit per address, so nginx must set it (`proxy_set_header X-Real-IP $remote_addr`, as the reference API does) and the API container must publish no port. Rate-limit counts live in each gunicorn worker, so the number of workers multiplies the limits. The privacy policy promises backups kept 14 days. The Playwright test runs against the dev stack; it can be pointed at the production stack with `E2E_BASE_URL`.
 
 ### 8. Deployment files
 
 - [x] Dockerfiles for the API (uv, gunicorn with Uvicorn workers) and for the web build served by nginx. (`deploy/api.Dockerfile`, `deploy/web.Dockerfile`, built from the repository root through an allowlist `.dockerignore`; the API's image carries the question bank.)
-- [x] A production compose file with nginx and certbot containers adapted from the kai examples: envsubst templates for http, https and first-certificate, SPA fallback, `/api` proxied to the API container, 444 default servers. (`deploy/docker-compose.yml`, `deploy/nginx/`; the https template was tried with a self-signed certificate. `make check-deploy` runs `nginx -t` on all three in CI.)
-- [x] Certificate issue and renew scripts adapted from the kai examples. (`deploy/certbot/`; the temporary configuration and `renew.sh` were tried, a real Let's Encrypt certificate was not: it needs a public domain.)
+- [x] A production compose file with nginx and certbot containers adapted from the reference examples: envsubst templates for http, https and first-certificate, SPA fallback, `/api` proxied to the API container, 444 default servers. (`deploy/docker-compose.yml`, `deploy/nginx/`; the https template was tried with a self-signed certificate. `make check-deploy` runs `nginx -t` on all three in CI.)
+- [x] Certificate issue and renew scripts adapted from the reference examples. (`deploy/certbot/`; the temporary configuration and `renew.sh` were tried, a real Let's Encrypt certificate was not: it needs a public domain.)
 - [x] Migrations run as an explicit deploy step. (In `deploy/scripts/deploy.sh`, with the new API image, before it starts; never on the API's start.)
 - [x] `deploy/backup.sh` keeps 14 nightly `pg_dump` files; the restore procedure in `docs/RUNBOOK.md` was tried locally. (`deploy/restore.sh` is the procedure; tried on 2026-11-17.)
-- [x] Manual build-and-publish and deploy workflows modelled on the kai repos; `docs/RUNBOOK.md` names their secrets. (Not run yet: nothing has been pushed. `deploy.sh`, which the deploy workflow calls, was run against a local registry, rollback included.)
+- [x] Manual build-and-publish and deploy workflows modelled on the reference projects; `docs/RUNBOOK.md` names their secrets. (Not run yet: nothing has been pushed. `deploy.sh`, which the deploy workflow calls, was run against a local registry, rollback included.)
 - [x] Logs are structured JSON; error tracking and external analytics switch on only when their keys are set. (gunicorn's and uvicorn's lines too, and nginx's access log; Sentry for the API and the web app, Plausible for the web app.)
 - [x] The production stack boots locally with the http config. (The Playwright test passes against it in both languages: `docs/RUNBOOK.md`, "Trying the production stack on a laptop".)
 

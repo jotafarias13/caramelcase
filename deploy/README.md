@@ -1,6 +1,6 @@
 # deploy
 
-Production: one Linux server running Docker Compose from a clone of this repository. `docs/RUNBOOK.md` ("Production" and the sections after it) says how to deploy, renew certificates, back up and restore; `make -C deploy help` lists the commands. Adapted from the owner's `kai-app` and `kai-api` projects.
+Production: one Linux server running Docker Compose from a clone of this repository. `docs/RUNBOOK.md` ("Production" and the sections after it) says how to deploy, renew certificates, back up and restore; `make -C deploy help` lists the commands. Adapted from the owner's reference projects. `docs/DEPLOY.md` lists what to set up before the first deploy.
 
 | File | What it is |
 | --- | --- |
