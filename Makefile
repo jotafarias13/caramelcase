@@ -3,14 +3,15 @@
 
 .PHONY: help install up down logs ps migrate migration seed import-content \
 	publish demo-user types lint lint-api lint-web typecheck typecheck-api \
-	typecheck-web test test-api test-web format build-web
+	typecheck-web test test-api test-web e2e format build-web
 
 help:
 	@echo "make install    install API and web dependencies on the host"
 	@echo "make up         start Postgres, the API and the web app (docker compose)"
+	@echo "                and wait until they answer"
 	@echo "make down       stop them"
 	@echo "make logs       follow their logs"
-	@echo "make migrate    apply the database migrations (needs make up)"
+	@echo "make migrate    apply the database migrations (starts the stack if needed)"
 	@echo "make seed       migrate, seed, import the content, publish the launch"
 	@echo "                subjects and create the demo user: a playable database"
 	@echo "make import-content   bring the questions in line with content/bank"
@@ -21,14 +22,18 @@ help:
 	@echo "make lint       ruff, eslint and prettier"
 	@echo "make typecheck  mypy and tsc"
 	@echo "make test       pytest (needs Docker for Postgres, and cc) and vitest"
+	@echo "make e2e        the Playwright test, against make up and make seed"
 	@echo "make format     fix what the linters can fix"
 
 install:
 	cd api && uv sync --locked
 	cd web && npm ci --no-audit --no-fund
 
+# Returns once every service is healthy: the first start installs the
+# API's and the web app's dependencies, which takes a minute or two.
 up:
-	docker compose up -d
+	docker compose up -d --wait
+	@echo "The app is at http://localhost:5173 (WEB_PORT in .env changes it)."
 
 down:
 	docker compose down
@@ -40,10 +45,12 @@ ps:
 	docker compose ps
 
 # The ones below run inside the api container, against the database of
-# docker compose.
-API_RUN = docker compose exec api uv run --frozen
+# docker compose. -T: no terminal is needed, so they also run in CI.
+API_RUN = docker compose exec -T api uv run --frozen
 
-migrate:
+# Starts the stack first if it is not up: the api container must have
+# finished installing its dependencies before a command runs in it.
+migrate: up
 	$(API_RUN) alembic upgrade head
 
 # Everything a development database needs to be played on. Every step is
@@ -102,6 +109,12 @@ test-api:
 
 test-web:
 	cd web && npm test
+
+# Plays a whole session in a browser against the running stack (make up,
+# make seed). Needs Playwright's Chromium once: cd web && npx playwright
+# install chromium.
+e2e:
+	cd web && npm run e2e
 
 build-web:
 	cd web && npm run build

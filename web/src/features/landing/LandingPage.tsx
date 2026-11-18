@@ -10,6 +10,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { locales } from "@/i18n";
 import { track } from "@/lib/analytics";
 import { cn } from "@/lib/utils";
+import { LegalLinks } from "@/features/legal/LegalLinks";
 import { LanguageSwitch } from "./LanguageSwitch";
 import { SampleQuestion } from "./SampleQuestion";
 
@@ -262,8 +263,11 @@ function LandingFooter() {
   const { t } = useTranslation();
   return (
     <div className={column}>
-      <footer className="flex items-center justify-between gap-3 border-t border-border pt-5 pb-[calc(28px+env(safe-area-inset-bottom))] font-mono text-[12px] leading-4 text-fg-muted">
-        <span>{t("common.brand")}</span>
+      <footer className="flex flex-wrap items-center justify-between gap-x-3 border-t border-border pt-2 pb-[calc(16px+env(safe-area-inset-bottom))] font-mono text-[12px] leading-4 text-fg-muted">
+        <div className="flex items-center gap-x-3">
+          <span>{t("common.brand")}</span>
+          <LegalLinks />
+        </div>
         <span>
           {locales.map((locale, index) => (
             <span key={locale}>

@@ -50,6 +50,11 @@ httpOnly cookie; a native client sends the same token as
 
 **CSRF.** Every POST, PATCH, PUT and DELETE must carry the
 `X-Requested-With` header, with any value, or it is a 403.
+
+**Rate limits.** The auth routes (per network address), sign-in links
+(per email address), answers and reports (per user) are limited. A
+request over a limit is a 429 `rate_limited`, with `Retry-After` in
+seconds.
 """
 
 app = FastAPI(
@@ -82,6 +87,7 @@ api = APIRouter(
         404: {"model": ErrorResponse},
         409: {"model": ErrorResponse},
         422: {"model": ErrorResponse},
+        429: {"model": ErrorResponse},
     },
 )
 for area in (

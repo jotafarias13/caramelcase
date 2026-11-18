@@ -98,6 +98,20 @@ services:
       - web_node_modules:/app/web/node_modules
     depends_on:
       - api
+    # Healthy once the dev server answers, so `docker compose up --wait`
+    # (make up) returns when the app can be opened. The first start runs
+    # npm install, hence the long start period.
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - 'fetch("http://localhost:5173/").then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))'
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 300s
+      start_interval: 3s
 
 volumes:
   db_data:

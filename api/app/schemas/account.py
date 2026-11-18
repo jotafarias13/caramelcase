@@ -56,6 +56,10 @@ class MagicLinkRequest(BaseModel):
 
 class MagicLinkVerifyRequest(BaseModel):
     token: Annotated[str, StringConstraints(min_length=1, max_length=200)]
+    # The device's language and timezone, for an account this sign-in
+    # creates. A guest who signs in keeps their own.
+    locale: Locale | None = None
+    timezone: Timezone | None = None
 
 
 class SettingsModel(BaseModel):

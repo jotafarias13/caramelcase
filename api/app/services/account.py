@@ -7,22 +7,34 @@ from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import delete, select
+from sqlalchemy import ColumnElement, delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import Base
 from app.db.models import (
+    AdEvent,
     Attempt,
     AuthIdentity,
+    AuthSession,
     DailyActivity,
     Event,
+    ExamAttempt,
+    LeagueMembership,
+    Lives,
     MagicLink,
     PracticeSession,
+    PushSubscription,
     QuestionReport,
+    Referral,
     ReviewItem,
     Streak,
     Subject,
+    Subscription,
+    TutorMessage,
+    TutorThread,
+    UsageCounter,
     User,
+    UserAchievement,
     UserSettings,
     UserSubject,
     UserSubjectRating,
@@ -41,9 +53,11 @@ from app.schemas.account import (
 from app.services.practice import published_subject
 from app.settings import Settings
 
-# The user's rows that GET /me/export returns, by table. Session tokens
-# and sign-in links are left out: they are credentials, not data.
-_EXPORTED: tuple[type[Base], ...] = (
+# The tables whose rows belong to a user through `user_id`, in the order
+# GET /me/export lists them. Every table that points at users is either
+# here, in export_user's own queries (referrals, and tutor_messages
+# through their threads) or in NOT_EXPORTED; a test checks that.
+EXPORTED_BY_USER_ID: tuple[type[Base], ...] = (
     UserSettings,
     AuthIdentity,
     UserSubject,
@@ -56,7 +70,20 @@ _EXPORTED: tuple[type[Base], ...] = (
     ReviewItem,
     QuestionReport,
     Event,
+    # V2 and V3: empty while their features are off.
+    PushSubscription,
+    Lives,
+    LeagueMembership,
+    UserAchievement,
+    ExamAttempt,
+    Subscription,
+    UsageCounter,
+    AdEvent,
+    TutorThread,
 )
+# Session tokens are credentials, not data. Sign-in links are too, and
+# are kept by email address, not by user.
+NOT_EXPORTED: tuple[type[Base], ...] = (AuthSession,)
 
 _USER_FIELDS = ("locale", "timezone", "display_name", "university", "course")
 _SETTINGS_FIELDS = (
@@ -176,15 +203,42 @@ async def _change_daily_goal(  # noqa: PLR0913
 async def export_user(
     session: AsyncSession, user: User, now: datetime
 ) -> ExportResponse:
+    """Every row about the user, by table; a table with none is an
+    empty list.
+    """
     tables: dict[str, list[dict[str, Any]]] = {}
-    for model in _EXPORTED:
-        rows = await session.scalars(
-            select(model)
-            .where(model.user_id == user.id)  # type: ignore[attr-defined]
-            .order_by(model.created_at, model.id)
+    for model in EXPORTED_BY_USER_ID:
+        tables[model.__tablename__] = await _rows(
+            session,
+            model,
+            model.user_id == user.id,  # type: ignore[attr-defined]
         )
-        tables[model.__tablename__] = [_as_json(row) for row in rows]
+    # An invitation belongs to both students, the one who invited and the
+    # one invited.
+    tables[Referral.__tablename__] = await _rows(
+        session,
+        Referral,
+        or_(
+            Referral.referrer_user_id == user.id,
+            Referral.referred_user_id == user.id,
+        ),
+    )
+    threads = select(TutorThread.id).where(TutorThread.user_id == user.id)
+    tables[TutorMessage.__tablename__] = await _rows(
+        session, TutorMessage, TutorMessage.thread_id.in_(threads)
+    )
     return ExportResponse(exported_at=now, user=_as_json(user), tables=tables)
+
+
+async def _rows(
+    session: AsyncSession,
+    model: type[Base],
+    condition: ColumnElement[bool],
+) -> list[dict[str, Any]]:
+    rows = await session.scalars(
+        select(model).where(condition).order_by(model.created_at, model.id)
+    )
+    return [_as_json(row) for row in rows]
 
 
 def _as_json(row: Base) -> dict[str, Any]:
@@ -208,8 +262,11 @@ def _json_value(value: object) -> object:
 async def delete_user(session: AsyncSession, user: User) -> None:
     """Erase the user and everything that belongs to them.
 
-    Their rows in other tables go with the users row (ON DELETE
-    CASCADE). Sign-in links are tied to the address, not to the user.
+    Their rows in other tables go with the users row: every foreign key
+    to users is ON DELETE CASCADE, which a test checks. Their answers go
+    too; the questions keep the counts and ratings the answers moved,
+    which say nothing about who answered. Sign-in links are tied to the
+    address, not to the user, so they are deleted here.
     """
     if user.email is not None:
         await session.execute(

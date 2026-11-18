@@ -20,6 +20,8 @@ const ProfilePage = lazy(() => import("@/features/profile/ProfilePage"));
 const SettingsPage = lazy(() => import("@/features/settings/SettingsPage"));
 const SessionPage = lazy(() => import("@/features/session/SessionPage"));
 const SummaryPage = lazy(() => import("@/features/summary/SummaryPage"));
+const PrivacyPage = lazy(() => import("@/features/legal/PrivacyPage"));
+const TermsPage = lazy(() => import("@/features/legal/TermsPage"));
 
 // Flagged routes (/review, /exam, /leagues, /pricing, /tutor, /admin) are
 // added in milestones 9 and 10, each as
@@ -44,6 +46,8 @@ export function AppRoutes() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/signin" element={<SignInPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
 
         <Route element={<RequireUser />}>
           <Route path="/start" element={<OnboardingPage />} />

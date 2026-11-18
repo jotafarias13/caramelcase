@@ -9,6 +9,7 @@ from loguru import logger
 
 from app.db.models import User
 from app.db.session import SessionDep
+from app.domain.local_time import is_timezone
 from app.enums import AuthProvider, Locale
 from app.errors import AppError
 from app.providers.email import EmailSender, get_email_sender
@@ -20,8 +21,11 @@ from app.providers.google import (
 from app.routes.dependencies import (
     Now,
     OptionalUser,
+    RateLimiterDep,
     SettingsDep,
     clear_session_cookie,
+    enforce_rate_limit,
+    limit_auth,
     session_token,
     set_session_cookie,
 )
@@ -30,6 +34,7 @@ from app.schemas.account import (
     MagicLinkRequest,
     MagicLinkVerifyRequest,
     MeResponse,
+    Timezone,
 )
 from app.services.account import me_response
 from app.services.auth_sessions import end_session, start_session
@@ -42,12 +47,16 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 GoogleDep = Annotated[GoogleProvider | None, Depends(get_google_provider)]
 EmailDep = Annotated[EmailSender, Depends(get_email_sender)]
+# Every route here but logout counts against the limit per address.
+LIMITED = [Depends(limit_auth)]
 
 _STATE_COOKIE = "cc_oauth_state"
+# The device's language and timezone, from start to callback.
+_DEVICE_COOKIE = "cc_oauth_device"
 _GOOGLE_PATH = "/api/v1/auth/google"
 
 
-@router.post("/guest")
+@router.post("/guest", dependencies=LIMITED)
 async def create_guest(
     body: GuestRequest,
     response: Response,
@@ -72,7 +81,7 @@ async def create_guest(
     return me
 
 
-@router.post("/magic-link", status_code=202)
+@router.post("/magic-link", status_code=202, dependencies=LIMITED)
 async def request_magic_link(
     body: MagicLinkRequest,
     session: SessionDep,
@@ -80,8 +89,16 @@ async def request_magic_link(
     now: Now,
     user: OptionalUser,
     sender: EmailDep,
+    limiter: RateLimiterDep,
 ) -> None:
     """Email a sign-in link. The answer is the same for any address."""
+    enforce_rate_limit(
+        limiter,
+        "sign_in_email",
+        body.email,
+        settings.rate_limit_sign_in_email,
+        now,
+    )
     locale = body.locale or (user.locale if user else Locale.PT_BR)
     await send_magic_link(
         session, sender, settings, email=body.email, locale=locale, now=now
@@ -89,7 +106,7 @@ async def request_magic_link(
     await session.commit()
 
 
-@router.post("/magic-link/verify")
+@router.post("/magic-link/verify", dependencies=LIMITED)
 async def verify_magic_link(
     body: MagicLinkVerifyRequest,
     request: Request,
@@ -112,6 +129,8 @@ async def verify_magic_link(
         provider=AuthProvider.EMAIL,
         provider_subject=email,
         email=email,
+        locale=body.locale,
+        timezone=body.timezone,
     )
     await _replace_session(request, response, session, account, settings, now)
     me = await me_response(session, account)
@@ -119,11 +138,18 @@ async def verify_magic_link(
     return me
 
 
-@router.get("/google/start", status_code=307)
+@router.get("/google/start", status_code=307, dependencies=LIMITED)
 async def google_start(
-    google: GoogleDep, settings: SettingsDep
+    google: GoogleDep,
+    settings: SettingsDep,
+    locale: Locale | None = None,
+    timezone: Timezone | None = None,
 ) -> RedirectResponse:
-    """Send the browser to Google's consent screen."""
+    """Send the browser to Google's consent screen.
+
+    locale and timezone are the device's, for an account the sign-in
+    creates; the callback reads them back from a cookie.
+    """
     if google is None:
         raise AppError(404, "not_found", "Not Found")
     state = secrets.token_urlsafe(32)
@@ -131,19 +157,14 @@ async def google_start(
     redirect = RedirectResponse(url, status_code=307)
     # The state comes back in the callback's query; this cookie proves
     # that the same browser started the flow.
-    redirect.set_cookie(
-        _STATE_COOKIE,
-        state,
-        max_age=settings.oauth_state_expire_minutes * 60,
-        httponly=True,
-        secure=settings.session_cookie_secure,
-        samesite="lax",
-        path=_GOOGLE_PATH,
+    _set_flow_cookie(redirect, _STATE_COOKIE, state, settings)
+    _set_flow_cookie(
+        redirect, _DEVICE_COOKIE, f"{locale or ''}|{timezone or ''}", settings
     )
     return redirect
 
 
-@router.get("/google/callback", status_code=307)
+@router.get("/google/callback", status_code=307, dependencies=LIMITED)
 async def google_callback(
     request: Request,
     session: SessionDep,
@@ -176,6 +197,7 @@ async def google_callback(
     if not profile.email_verified:
         return _back_to_app(settings, error="google_email_not_verified")
 
+    locale, timezone = _device_of(request)
     account = await sign_in(
         session,
         settings,
@@ -184,6 +206,8 @@ async def google_callback(
         provider_subject=profile.subject,
         email=profile.email.lower(),
         display_name=profile.name,
+        locale=locale,
+        timezone=timezone,
     )
     redirect = _back_to_app(settings)
     await _replace_session(request, redirect, session, account, settings, now)
@@ -224,6 +248,34 @@ async def _replace_session(
     set_session_cookie(response, token, settings)
 
 
+def _set_flow_cookie(
+    response: Response, name: str, value: str, settings: Settings
+) -> None:
+    """A cookie that lives from the start of the Google flow to its
+    callback, and is sent to the Google routes only.
+    """
+    response.set_cookie(
+        name,
+        value,
+        max_age=settings.oauth_state_expire_minutes * 60,
+        httponly=True,
+        secure=settings.session_cookie_secure,
+        samesite="lax",
+        path=_GOOGLE_PATH,
+    )
+
+
+def _device_of(request: Request) -> tuple[Locale | None, str | None]:
+    """The language and timezone google_start was given, if valid."""
+    locale, _, timezone = request.cookies.get(_DEVICE_COOKIE, "").partition(
+        "|"
+    )
+    return (
+        Locale(locale) if locale in set(Locale) else None,
+        timezone if is_timezone(timezone) else None,
+    )
+
+
 def _google_redirect_uri(settings: Settings) -> str:
     return f"{settings.app_base_url}{_GOOGLE_PATH}/callback"
 
@@ -236,4 +288,5 @@ def _back_to_app(
         url += f"?error={error}"
     redirect = RedirectResponse(url, status_code=307)
     redirect.delete_cookie(_STATE_COOKIE, path=_GOOGLE_PATH)
+    redirect.delete_cookie(_DEVICE_COOKIE, path=_GOOGLE_PATH)
     return redirect

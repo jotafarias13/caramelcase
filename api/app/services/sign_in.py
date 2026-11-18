@@ -31,7 +31,7 @@ from app.db.models import (
 )
 from app.db.rows import ensure_row
 from app.domain.streak import streak_from_days
-from app.enums import AuthProvider
+from app.enums import AuthProvider, Locale
 from app.services.users import create_user
 from app.settings import Settings
 
@@ -45,10 +45,16 @@ async def sign_in(  # noqa: PLR0913  who is asking, and who they proved to be
     provider_subject: str,
     email: str,
     display_name: str | None = None,
+    locale: Locale | None = None,
+    timezone: str | None = None,
 ) -> User:
     """Return the account for a proven identity, creating or upgrading
     as needed. email is lower case and belongs to whoever is asking:
     Google verified it, or they opened the link sent to it.
+
+    locale and timezone are the device's. A new account starts with
+    them, so that someone who signs in before playing keeps the language
+    they read the app in; a guest who signs in keeps their own.
     """
     guest = current_user if current_user and current_user.is_guest else None
     account = await _account_of(session, provider, provider_subject, email)
@@ -58,8 +64,8 @@ async def sign_in(  # noqa: PLR0913  who is asking, and who they proved to be
         account.email = email
         account.is_guest = False
     elif account is None:
-        locale = current_user.locale if current_user else None
-        timezone = current_user.timezone if current_user else None
+        if current_user is not None:
+            locale, timezone = current_user.locale, current_user.timezone
         account = await create_user(
             session, settings, locale=locale, timezone=timezone, email=email
         )

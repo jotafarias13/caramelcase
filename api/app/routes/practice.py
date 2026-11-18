@@ -8,10 +8,15 @@ back from the answer route, one question at a time.
 import random
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.db.session import SessionDep
-from app.routes.dependencies import CurrentUser, Now, SettingsDep
+from app.routes.dependencies import (
+    CurrentUser,
+    Now,
+    SettingsDep,
+    limit_answers,
+)
 from app.schemas.practice import (
     AnswerRequest,
     AnswerResponse,
@@ -75,7 +80,7 @@ async def get_session(
     )
 
 
-@router.post("/{session_id}/answers")
+@router.post("/{session_id}/answers", dependencies=[Depends(limit_answers)])
 async def post_answer(
     session_id: uuid.UUID,
     body: AnswerRequest,

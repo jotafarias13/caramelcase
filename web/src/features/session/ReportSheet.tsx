@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { isRateLimited } from "@/api/client";
 import { useReportQuestion } from "@/api/queries";
 import type { ReportReason } from "@/api/types";
 import { Button } from "@/components/ui/button";
@@ -49,7 +50,13 @@ export function ReportSheet({
           setComment("");
           toast({ kind: "success", message: t("report.sent") });
         },
-        onError: () => toast({ kind: "error", message: t("report.failed") }),
+        onError: (error) =>
+          toast({
+            kind: "error",
+            message: isRateLimited(error)
+              ? t("states.rate_limited")
+              : t("report.failed"),
+          }),
       },
     );
   }

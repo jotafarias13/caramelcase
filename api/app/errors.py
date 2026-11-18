@@ -23,16 +23,30 @@ class ErrorResponse(BaseModel):
 
 
 class AppError(Exception):
-    def __init__(self, status: int, code: str, message: str) -> None:
+    def __init__(
+        self,
+        status: int,
+        code: str,
+        message: str,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         super().__init__(message)
         self.status = status
         self.code = code
         self.message = message
+        self.headers = headers
 
 
-def error_response(status: int, code: str, message: str) -> JSONResponse:
+def error_response(
+    status: int,
+    code: str,
+    message: str,
+    headers: dict[str, str] | None = None,
+) -> JSONResponse:
     body = ErrorResponse(error=ErrorBody(code=code, message=message))
-    return JSONResponse(status_code=status, content=body.model_dump())
+    return JSONResponse(
+        status_code=status, content=body.model_dump(), headers=headers
+    )
 
 
 def _code_for_status(status: int) -> str:
@@ -42,7 +56,9 @@ def _code_for_status(status: int) -> str:
 
 def _on_app_error(_: Request, error: Exception) -> JSONResponse:
     assert isinstance(error, AppError)
-    return error_response(error.status, error.code, error.message)
+    return error_response(
+        error.status, error.code, error.message, error.headers
+    )
 
 
 def _on_http_exception(_: Request, error: Exception) -> JSONResponse:

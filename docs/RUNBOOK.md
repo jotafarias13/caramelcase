@@ -6,9 +6,14 @@ An outline. Local development is written; the production sections are filled in 
 
 Needs Docker, and for the checks uv, Node 24 and a C compiler as `cc` (the content tools compile the C of questions).
 
+From a clean clone, two commands give a playable app:
+
 ```sh
-docker compose up        # Postgres 16, the API with reload, the Vite dev server
+make up          # Postgres 16, the API with reload, the Vite dev server; waits until they answer
+make seed        # migrations, the question bank, the launch subjects published, the demo user
 ```
+
+Then open http://localhost:5173. Tried on a fresh copy of the repository with fresh volumes: `make up` took 12 seconds and `make seed` 26, with the three images already pulled; the first pull adds a few minutes. `docker compose up` in the foreground works too; `make seed` starts the stack itself if it is not up.
 
 - App: http://localhost:5173
 - API: http://localhost:8000/api/v1/health, docs at http://localhost:8000/api/v1/docs
@@ -20,7 +25,7 @@ The first start installs the API and web dependencies inside the containers, int
 
 `docker compose down` stops everything and keeps the data; `docker compose down -v` also deletes the database and the dependency volumes.
 
-A new database is empty. `make seed` makes it playable (see Seeding): from a clean clone, `docker compose up` and `make seed` are the two commands.
+A new database is empty. `make seed` makes it playable (see Seeding).
 
 ### Signing in locally
 
@@ -46,7 +51,19 @@ make types        # after changing a route or a model in api/app/schemas/
 
 The API tests start their own Postgres 16 container, so Docker must be running. To use a server that is already up instead, set `TEST_DATABASE_URL`: the tests drop everything in that database, and create and drop other databases on that server, so its user needs `CREATEDB`.
 
-CI (`.github/workflows/ci.yaml`) runs the same targets on every push.
+CI (`.github/workflows/ci.yaml`) runs the same targets on every push, and a third job runs the end-to-end test below.
+
+### The end-to-end test
+
+```sh
+make up && make seed                          # once: the stack and its data
+cd web && npx playwright install chromium     # once: the browser
+make e2e
+```
+
+`web/e2e/guest-session.spec.ts` plays what the spec asks of it in a real Chromium against the running stack: a new guest opens the landing page, goes through onboarding, answers ten questions (always the first option: it does not know the keys), sees the summary, then opens Home, Profile and Settings. It runs twice, in Portuguese at 360 px and in English at 1280 px, and first checks with `GET /config` that every feature flag is off. Each run leaves a guest in the database.
+
+`E2E_BASE_URL=http://localhost:55173 make e2e` runs it against a stack on other ports. When it fails, `web/test-results/` has a screenshot and a trace of each failed step: `npx playwright show-trace <file>`. In CI, the failed job keeps both as the `playwright-report` artifact and prints the stack's logs.
 
 ### The web app
 
@@ -186,6 +203,37 @@ All from the environment (`.env.example` lists them):
 | `CORS_ORIGINS` | The origins allowed to call the API with the cookie: the app's own |
 
 A session lasts 90 days from its last renewal (`SESSION_LIFETIME_DAYS`) and is renewed while the student keeps coming back. To sign a user out everywhere: `DELETE FROM sessions_auth WHERE user_id = '<id>';`.
+
+## Rate limits
+
+The auth routes, sign-in links, answers and reports are limited (the table is in `docs/ARCHITECTURE.md`). Over a limit, the API answers 429 `rate_limited` with `Retry-After`; the app says "Muitas tentativas seguidas…" on sign-in, an answer and a report.
+
+- **Change a limit** with an environment variable holding JSON, then restart the API: `RATE_LIMIT_AUTH='{"requests": 600, "seconds": 600}'`. The four are `RATE_LIMIT_AUTH`, `RATE_LIMIT_SIGN_IN_EMAIL`, `RATE_LIMIT_ANSWERS` and `RATE_LIMIT_REPORTS`.
+- **Lift a limit for someone now:** restart the API. The counts live in the API's memory and start again from zero.
+- **Under gunicorn**, each worker counts apart, so a caller can reach the number of workers times a limit before every worker refuses.
+- **A whole campus may share one address.** The limit per address (300 in 10 minutes) is set high for that; if students behind one network see "Muitas tentativas seguidas" on their first visit, raise `RATE_LIMIT_AUTH`.
+
+## A student's data
+
+A student downloads everything the app keeps about them in Settings, "Baixar meus dados" (`GET /me/export`, a JSON file), and erases it with "Excluir conta" (`DELETE /me`). Both work for a guest too.
+
+When someone asks by email instead, for an account they can no longer open:
+
+```sql
+-- What the account holds: the user's id, then the same tables as the export.
+SELECT id, email, created_at FROM users WHERE email = '<address>';
+-- Erase it: every row of the user goes with it, and the sign-in links sent to the address.
+DELETE FROM users WHERE email = '<address>';
+DELETE FROM magic_links WHERE email = '<address>';
+```
+
+Backups keep a deleted account for as long as they are kept (14 days, milestone 8); the privacy policy says so.
+
+## Privacy policy and terms
+
+`/privacy` and `/terms` hold placeholder text written in plain language from what the app does. Their text is under `legal` in `web/src/i18n/pt-BR.json` and `en.json`: one title and one body per section, paragraphs apart by a blank line, a list as lines that start with `- `. Gaps are in brackets (`[nome da empresa]`, `[e-mail de contato]`, `[data]`).
+
+When the final text arrives: replace the bodies in both files, fill or remove every bracket, set `legal.updated`, and remove the draft note (`legal.draft`, the `role="note"` paragraph in `web/src/features/legal/LegalDocument.tsx`, and its check in `legal.test.tsx`). A section is added or removed in the list at the top of `PrivacyPage.tsx` or `TermsPage.tsx` and in both files.
 
 ## Troubleshooting
 

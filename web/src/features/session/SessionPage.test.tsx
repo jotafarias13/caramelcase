@@ -244,6 +244,44 @@ describe("reporting a question", () => {
   });
 });
 
+describe("rate limits", () => {
+  it("says to wait when the answer is refused for coming too fast", async () => {
+    const { user } = renderSession({
+      "POST /sessions/:id/answers": apiError(429, "rate_limited"),
+    });
+
+    await user.click(await screen.findByRole("radio", { name: "24" }));
+    await user.click(screen.getByRole("button", { name: "Verificar" }));
+
+    expect(
+      await screen.findByText(/Muitas tentativas seguidas/),
+    ).toBeInTheDocument();
+    expect(option("24")).toBeChecked();
+    expect(
+      screen.queryByRole("button", { name: "Continuar" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says to wait when a report is refused for coming too fast", async () => {
+    const { user } = renderSession({
+      "POST /questions/:id/report": apiError(429, "rate_limited"),
+    });
+    await answerWith(user, "24");
+
+    await user.click(screen.getByRole("button", { name: "Reportar questão" }));
+    const dialog = await screen.findByRole("dialog", {
+      name: "Reportar questão",
+    });
+    await user.click(within(dialog).getByRole("radio", { name: "Outro" }));
+    await user.click(within(dialog).getByRole("button", { name: "Enviar" }));
+
+    expect(
+      await screen.findByText(/Muitas tentativas seguidas/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+});
+
 describe("offline", () => {
   function goOffline() {
     const onLine = vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);

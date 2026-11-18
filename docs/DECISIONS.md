@@ -469,3 +469,58 @@ The owner approved the pilot on 2026-11-17 and settled what it had left open.
 - **The profile has no way to enter a name** (carried from milestone 5).
 - **Session-expired is not told apart from signed-out**: both end on the landing page without a word.
 
+
+## Milestone 7 · V1 hardening
+
+### Rate limits
+
+- **Four limits, as settings**: guests, sign-in links and the Google flow together, per network address (300 in 10 minutes); sign-in links per email address (5 an hour); answers per user (60 a minute); reports per user (10 an hour). The spec names the routes and gives no numbers. Signing out is not limited. Every number is a placeholder to tune with real traffic, like the plan limits.
+- **The limit per address is high on purpose.** A university can reach the API from one address for a whole campus, and the first visit of every student there creates a guest. The limit stops a script, not a classroom; the per-email limit is the one that protects an inbox.
+- **Fixed windows from the Unix epoch**, the simplest count: a caller may make the limit's number of requests in a window. A burst across the end of one window and the start of the next can reach twice the limit, which is acceptable for these four.
+- **Counts are kept in memory by each API process, not in Postgres.** No table, no migration and no clean-up job. The costs: under gunicorn each worker counts apart, and a restart clears the counts. nginx's limit per address (milestone 8) is the outer layer. If that proves too loose, the counter moves to a table without changing the routes.
+- **A refused request is a 429 `rate_limited` with `Retry-After`**, in the single error shape, and it still counts. 429 is in the OpenAPI schema of every route.
+- **The address is `X-Real-IP`, trusted as sent**, as the request log already did. nginx overwrites it with the real address, so in production the API must be reachable only through nginx (milestone 8). Locally, everything arrives from the Vite proxy's address.
+- **The web app says "Muitas tentativas seguidas. Espera um pouquinho e tenta de novo."** where a student can meet a limit: sending a sign-in link, an answer, a report. The copy is new, in the voice of `design/copy.md`. A 429 while creating a guest shows the error screen, like any other failure there.
+- **Product events are not limited.** `POST /events` is open to visitors and writes rows; the spec does not list it, and nginx's limit per address covers it. Left open below.
+
+### Export and deletion
+
+- **The export covers every table that points at `users`**, those of V2 and V3 included, as empty lists until their features exist: referrals on either side, and tutor messages through the user's threads. Session tokens and sign-in links are credentials and stay out. A test reads the database's foreign keys and fails when a new table is in neither the export nor the list of credentials, so a later milestone cannot forget one.
+- **Deleting an account deletes its answers too; anonymous attempts are not kept.** Milestone 2 left this open. The questions keep the counts and ratings that the answers moved, which is all the statistics of a question need, and nothing of the person is left. Reports and events go with the account as well. A test checks that every foreign key to `users` cascades and that no row anywhere points at the deleted user afterwards.
+- **Settings has "Baixar meus dados"** above "Excluir conta", for guests too: a plain download link to `GET /me/export`, saved as `caramelcase-data.json`. `design/README.md` lists data export under "Not designed"; the link is styled like "Excluir conta" in the text colour. The privacy policy points at it.
+
+### Signing in before playing
+
+- **An account created by a sign-in starts in the language and timezone of the device.** Found while checking V1 end to end in English: someone who signs in from the landing page, without playing first, has no guest, and the account was created in Portuguese with São Paulo's time. Since the account's language wins over the device's (milestone 6), the app then switched an English reader to Portuguese. The web app now sends its language and timezone in the body of `/auth/magic-link/verify` and in the query of `/auth/google/start`; the Google flow keeps them in a second short-lived cookie, `cc_oauth_device`, beside the state. A guest who signs in keeps their own, as before.
+
+### Privacy policy and terms
+
+- **`/privacy` and `/terms`, open to anyone**, lazy-loaded and not pre-rendered: only the landing page needs search visibility. Reading them creates no guest.
+- **Built from existing pieces**, as `design/README.md` lists legal pages under "Not designed": the landing page's header (the wordmark, here a link to `/`, and the language switch) and footer around a 768 px reading column with the type sizes of the other screens.
+- **The text is placeholder legal text in plain language, written from what the app does**: what is stored (the request log's IP address included), the one session cookie, Google Fonts, who receives data, the 14 days of backups milestone 8 sets up, and how to download and delete. What only the owner or a lawyer can say is in brackets: company, contact, data protection officer, legal basis, minimum age, retention of guests and logs, jurisdiction. A note at the top says the text is a draft.
+- **The text lives in the translation files**, under `legal`, one title and one body per section, so the lint rule against hardcoded copy holds. A body is paragraphs apart by a blank line and lists as lines that start with "- ", which `LegalText` renders.
+- **Links "Privacidade · Termos"** in the landing page's footer, under "Continuar sem conta" on sign-in, and under the cards in Settings. No consent wording at sign-in: what it should say is a legal decision.
+
+### The end-to-end test
+
+- **It runs against the docker compose stack seeded by `make seed`**, not against a production build: nginx and the production images are milestone 8's, and CI's web job already builds the app. The CI job runs `make up`, `make seed` and `make e2e` on a fresh runner, which is also the check that two commands lead to a playable session.
+- **One test, two Playwright projects**: Portuguese on a 360 px phone and English on a 1280 px desktop, the language coming from the browser's as on a first visit. It finds everything by role and by the texts of the translation files, takes the first option of every question since it cannot know the keys, and first checks through `GET /config` that every flag is off. Past the summary it opens Home, Profile and Settings, so "works end to end in both languages" has a test.
+- **No web server in the Playwright config.** The stack must be up; a global setup checks `/api/v1/health` first and says to run `make up && make seed`. One retry in CI, none locally. Each run leaves a guest in the database it ran against.
+- **CI is still unobserved**: nothing has been pushed. The job was run locally step by step as it is written, against a stack on other ports.
+
+### Two commands
+
+- **`make up` waits until the app answers** (`docker compose up -d --wait`). The web service has a healthcheck now, so the wait covers its `npm install`. `make migrate`, and so `make seed`, starts the stack first if it is not up, because a command run in the API container while its first `uv sync` is still going would race it. Commands in the container run with `exec -T`, which CI needs.
+- **Tried on a copy of the working tree with nothing installed**, as its own compose project on other ports and fresh volumes: `make up` took 12 seconds and `make seed` 26 (880 questions imported, three subjects published, the demo user created), with the Docker images already on the machine. The Playwright test then passed against it in both languages.
+- **Checked by hand on that stack, in both languages**, with a throwaway browser script: signing in by email link from the landing page, the account in the device's language and timezone, onboarding to a session, the email in Settings, the data download, the privacy policy and the terms, the sixth link to one address in an hour refused with the new message, deleting the account, and a link sent before the deletion no longer working.
+
+### Spec against design
+
+- **The landing page's footer** now holds the two links beside the brand. On phones it takes two lines, with the languages on the second; the mockups draw one. The sign-in screen has a line of links under "Continuar sem conta", which its mockups do not have.
+
+### Open, not decided
+
+- **Product events have no rate limit** (above).
+- **What the legal pages leave in brackets**, and whether signing in needs a consent line.
+- **Guests are still never cleaned up**; the privacy policy has a bracket for how long they are kept, and for how long request logs are.
+- **The local database collects a guest per end-to-end run.**

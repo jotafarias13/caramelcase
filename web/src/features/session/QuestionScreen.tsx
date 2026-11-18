@@ -1,7 +1,7 @@
 import { WifiOff } from "lucide-react";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ApiError } from "@/api/client";
+import { ApiError, isRateLimited } from "@/api/client";
 import { useAnswer } from "@/api/queries";
 import type {
   AnswerResult,
@@ -117,6 +117,8 @@ export function QuestionScreen({
           // Status 0: the request never reached the server.
           if (error instanceof ApiError && error.status === 0) {
             wait(key, timeMs);
+          } else if (isRateLimited(error)) {
+            toast({ kind: "error", message: t("states.rate_limited") });
           } else {
             toast({ kind: "error", message: t("session.answer_failed") });
           }

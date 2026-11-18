@@ -44,6 +44,17 @@ class PlanDefinition(BaseModel):
     limits: PlanLimits
 
 
+class RateLimit(BaseModel):
+    """At most `requests` requests in each window of `seconds` seconds.
+
+    In the environment, as JSON: RATE_LIMIT_ANSWERS='{"requests": 60,
+    "seconds": 60}'.
+    """
+
+    requests: int
+    seconds: int
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(extra="ignore")
 
@@ -104,6 +115,20 @@ class Settings(BaseSettings):
     demo_user_email: str = "demo@example.com"
     demo_user_name: str = "Carol Demo"
     demo_history_days: int = 21
+
+    # ---- rate limits ----
+    # A request over a limit is a 429 until its window ends. Counts are
+    # kept in memory by each API process (docs/DECISIONS.md, milestone 7).
+    # Guests, sign-in links and the Google flow, per network address. A
+    # whole campus can reach us from one address, so the number is high:
+    # it stops a script, not a classroom.
+    rate_limit_auth: RateLimit = RateLimit(requests=300, seconds=600)
+    # Sign-in links sent to one email address.
+    rate_limit_sign_in_email: RateLimit = RateLimit(requests=5, seconds=3600)
+    # Answers of one user. A session is ten.
+    rate_limit_answers: RateLimit = RateLimit(requests=60, seconds=60)
+    # Question reports of one user.
+    rate_limit_reports: RateLimit = RateLimit(requests=10, seconds=3600)
 
     # ---- limits on what a client may send ----
     report_comment_max_chars: int = 1000

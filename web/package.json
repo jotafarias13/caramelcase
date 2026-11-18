@@ -13,6 +13,7 @@
     "types": "openapi-typescript src/api/openapi.json -o src/api/schema.d.ts",
     "types:check": "openapi-typescript src/api/openapi.json -o src/api/schema.d.ts --check",
     "test": "vitest run",
+    "e2e": "playwright test -c e2e/playwright.config.ts",
     "shots": "playwright test -c shots/playwright.config.ts",
     "icons": "node scripts/export-icons.mjs"
   },

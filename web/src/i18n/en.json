@@ -65,7 +65,8 @@
     "not_found_body": "The link may be wrong or the page has moved.",
     "maintenance_code": "git commit -m \"tidying up\"",
     "maintenance_title": "Under maintenance",
-    "maintenance_body": "We're fixing a few things. Back soon."
+    "maintenance_body": "We're fixing a few things. Back soon.",
+    "rate_limited": "Too many tries in a row. Wait a moment and try again."
   },
   "landing": {
     "meta_title": "caramelCase · Computer science in five-minute sessions",
@@ -313,6 +314,59 @@
     "delete_body": "This deletes your progress, your streak and your rating. It can't be undone.",
     "save_failed": "Couldn't save. Try again.",
     "sign_out_failed": "Couldn't sign you out. Try again.",
-    "delete_failed": "Couldn't delete your account. Try again."
+    "delete_failed": "Couldn't delete your account. Try again.",
+    "download_data": "Download my data",
+    "download_data_body": "A file with everything we keep about you."
+  },
+  "legal": {
+    "links_label": "Documents",
+    "privacy_link": "Privacy",
+    "terms_link": "Terms",
+    "updated": "Last updated: [date]",
+    "draft": "Draft: the final legal text is still to be written. Text in brackets marks a gap to fill.",
+    "privacy": {
+      "title": "Privacy policy",
+      "intro": "This page explains, in plain words, what data caramelCase keeps, what for, and how you control it.",
+      "who_title": "Who looks after your data",
+      "who_body": "caramelCase is run by [company name], [company registration number], [address]. To talk about privacy, write to [contact email]. Our data protection officer is [officer's name].",
+      "data_title": "What we keep",
+      "data_body": "- When you sign in: your email address and, if you use Google, the name Google gives us.\n- Your preferences: language, timezone, theme, daily goal, and whether you want to see why each option is right or wrong.\n- If you tell us: your university and course.\n- Your practice: your sessions, each answer and how long it took, your rating, XP, streak and mastery of each topic.\n- What you send us: your reports about questions, with any comment you write.\n- App use: a few events, such as a visit to the front page.\n- Technical logs: the IP address and time of each request to our server.\n\nWe keep no passwords: you sign in with Google or with a link sent by email.",
+      "use_title": "What we use it for",
+      "use_body": "To run the app: picking questions at your level, counting your goal and streak, showing your progress and sending your sign-in link.\n\nTo improve the questions: your reports, and each question's success rate, which does not say who answered.\n\nTo protect the service: limiting repeated requests and looking into abuse.\n\nWe do not use your data for advertising, and we do not sell it.",
+      "device_title": "Cookies and your device",
+      "device_body": "We use a single cookie, which keeps you signed in. It is not used for advertising or to follow you on other sites.\n\nYour browser keeps your language, your theme and, if the connection drops during a session, the answer that has not been sent yet.\n\nThe app's fonts come from Google Fonts: to download them, your browser connects to Google's servers.",
+      "sharing_title": "Who we share it with",
+      "sharing_body": "- Google, if you sign in with Google: it tells us your email address and name.\n- The service that sends our emails, which gets your address to send your sign-in link: [email provider].\n- Our hosting, where the server and database run: [hosting provider], in [country].\n\nOtherwise we only share data when the law requires it.",
+      "retention_title": "How long we keep it",
+      "retention_body": "For as long as your account exists. When you delete your account, we erase your data and all your answers at once; our backups keep that data for up to 14 days.\n\nUnused guest accounts: [period to be decided]. Technical logs: [period to be decided].",
+      "rights_title": "Your rights",
+      "rights_body": "Brazil's data protection law (LGPD) lets you know what we keep, get a copy, correct it and erase it. In the app:\n\n- Download your data: in Settings, “Download my data”.\n- Erase everything: in Settings, “Delete account”.\n\nTo correct something, or for any other request, write to [contact email].",
+      "basis_title": "Legal basis",
+      "basis_body": "[To be decided with legal counsel: the legal basis for each use of the data, such as providing the service you asked for by using the app.]",
+      "changes_title": "Changes to this policy",
+      "changes_body": "When this policy changes, the new version appears here with its date. If the change is a big one, we will tell you in the app."
+    },
+    "terms": {
+      "title": "Terms of use",
+      "intro": "By using caramelCase you agree to these terms. They are short on purpose.",
+      "service_title": "The service",
+      "service_body": "caramelCase is an app for practising computer science with multiple-choice questions. The questions are written and checked with care, but they may contain mistakes: if you find one, use “Report question”.\n\nThe app helps you study. It does not replace your classes and does not guarantee exam results.",
+      "account_title": "Your account",
+      "account_body": "You can practise without signing up: the app creates a guest account on this device. When you sign in with Google or with an email link, your progress is kept in your account.\n\nLook after access to your email: it is what lets you into your account.\n\n[Minimum age to use the app: to be decided.]",
+      "conduct_title": "Acceptable use",
+      "conduct_body": "- Do not copy the questions in bulk, by hand or with automated tools.\n- Do not try to get into someone else's account or data.\n- Do not overload the service or try to get around its limits.\n\nWe may suspend the account of anyone who does.",
+      "content_title": "The questions",
+      "content_body": "The questions, explanations and the rest of the app's content belong to [company name]. You may use them for your own study; for any other use, ask us first.",
+      "price_title": "Price",
+      "price_body": "caramelCase is free today. If paid plans arrive, their terms will appear here before anyone is charged.",
+      "liability_title": "Liability",
+      "liability_body": "[To be decided with legal counsel: the availability of the service and the limits of liability.]",
+      "ending_title": "Ending",
+      "ending_body": "You can delete your account whenever you like, in Settings. If caramelCase shuts down, we will tell you [notice period] in advance.",
+      "law_title": "Law and jurisdiction",
+      "law_body": "These terms follow Brazilian law. Disputes go to the courts of [city/state].",
+      "contact_title": "Contact",
+      "contact_body": "Questions about these terms: [contact email]."
+    }
   }
 }

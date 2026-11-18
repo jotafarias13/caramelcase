@@ -2,7 +2,7 @@
 
 The build order for `docs/initial-spec.md`, as a checklist. Work top to bottom: the next task is the first unticked box. A milestone is done when every box under it is ticked, lint, type checks and tests pass, and it is committed.
 
-Status on 2026-11-17: milestones 1 to 3, 5 and 6 done. Milestone 4 is open but set aside: 34 of the 50 topics are in the bank (880 questions), imported as `verified`, and the owner decided that is enough to move on. Next: milestone 7, V1 hardening. The other 16 topics of milestone 4 come later, when the owner says so, with subagents on Opus 5.5 at high effort (see milestone 4).
+Status on 2026-11-17: milestones 1 to 3 and 5 to 7 done. Milestone 4 is open but set aside: 34 of the 50 topics are in the bank (880 questions), imported as `verified`, and the owner decided that is enough to move on. Next: milestone 8, deployment files. The other 16 topics of milestone 4 come later, when the owner says so, with subagents on Opus 5.5 at high effort (see milestone 4).
 
 ## Decisions
 
@@ -98,13 +98,15 @@ What milestone 7 builds on: the whole flow was played against the real API by a 
 
 ### 7. V1 hardening
 
-- [ ] The Playwright test passes in CI: a guest opens the landing page, finishes a session and sees the summary.
-- [ ] Rate limits on the auth, answer and report routes, with tests.
-- [ ] `GET /me/export` returns the user's data and `DELETE /me` erases it; both tested. (Both were built in milestone 5 with one test each. Left here: check the export against every V1 table, and decide whether anonymous attempts are kept on delete.)
-- [ ] Privacy policy and terms pages exist in both languages with placeholder legal text.
-- [ ] `docs/ARCHITECTURE.md` explains the request path, the data model and where each business rule lives.
-- [ ] From a clean clone, two commands lead to a playable session.
-- [ ] V1 works end to end in both languages with every flag off.
+- [x] The Playwright test passes in CI: a guest opens the landing page, finishes a session and sees the summary. (`web/e2e/`, `make e2e`, in Portuguese at 360 px and English at 1280 px. The CI job `e2e` runs `make up`, `make seed`, `make e2e`; it passed locally run step by step, and its first run in CI happens on the first push, the owner's call.)
+- [x] Rate limits on the auth, answer and report routes, with tests. (Four limits in settings, counted in memory per API process; a 429 with `Retry-After`.)
+- [x] `GET /me/export` returns the user's data and `DELETE /me` erases it; both tested. (The export covers every table that points at `users`, guarded by a test; deleting erases the answers too, and the questions keep their counts. Settings has "Baixar meus dados".)
+- [x] Privacy policy and terms pages exist in both languages with placeholder legal text. (`/privacy` and `/terms`, linked from the landing page, sign-in and Settings.)
+- [x] `docs/ARCHITECTURE.md` explains the request path, the data model and where each business rule lives.
+- [x] From a clean clone, two commands lead to a playable session. (`make up` and `make seed`: 12 and 26 seconds on a fresh copy with fresh volumes, then the Playwright test passed against it.)
+- [x] V1 works end to end in both languages with every flag off. (The Playwright test, and a throwaway walk through sign-in, export, the legal pages, a rate limit and deletion in both languages. It found and fixed one bug: an account created by signing in before playing was always Portuguese.)
+
+What milestone 8 builds on: the API trusts `X-Real-IP` for the rate limit per address, so nginx must set it (`proxy_set_header X-Real-IP $remote_addr`, as `kai-api` does) and the API container must publish no port. Rate-limit counts live in each gunicorn worker, so the number of workers multiplies the limits. The privacy policy promises backups kept 14 days. The Playwright test runs against the dev stack; it can be pointed at the production stack with `E2E_BASE_URL`.
 
 ### 8. Deployment files
 
@@ -162,7 +164,7 @@ None of these block the build; each has a mock or placeholder.
 - SMTP credentials for sign-in emails
 - A hand check of about 50 questions per launch subject before it is published
 - Final free-plan limits and ad frequency
-- Legal text for the privacy policy and terms
+- Legal text for the privacy policy and terms: the pages exist with placeholder text, and the gaps are in brackets (company, contact, data protection officer, legal basis, minimum age, retention, jurisdiction); also whether signing in needs a consent line
 - Where a student types their name, if anywhere: only Google gives one (see "Open, not decided" under milestone 5 in `docs/DECISIONS.md`)
 - Web fonts: served by Google Fonts as the design's token file asks, or self-hosted so they work offline (see "Landing page, PWA" under milestone 6 in `docs/DECISIONS.md`)
 - A look at the screens no mockup covers: `/subjects`, `/auth/callback`, the subject switcher on Home, the streak moments on Home, a guest's Settings, a profile without a name

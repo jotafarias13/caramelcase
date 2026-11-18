@@ -20,9 +20,14 @@ import { locales } from "@/i18n";
 import { useFlag } from "@/lib/flags";
 import { useChangeLocale, useChangeTheme } from "@/lib/preferences";
 import { getThemeChoice } from "@/lib/theme";
+import { LegalLinks } from "@/features/legal/LegalLinks";
 import { DeleteAccountDialog } from "./DeleteAccountDialog";
 
 const themes: ThemeSetting[] = ["light", "dark", "system"];
+
+// Everything the API keeps about the user (LGPD's right of access).
+const EXPORT_URL = "/api/v1/me/export";
+const EXPORT_FILE_NAME = "caramelcase-data.json";
 
 /**
  * Says that a change did not reach the account. Called after the control
@@ -85,6 +90,7 @@ function Settings({ me }: { me: Me }) {
           </Card>
         )}
         <AccountCard me={me} />
+        <LegalLinks />
       </div>
     </>
   );
@@ -259,6 +265,19 @@ function AccountCard({ me }: { me: Me }) {
         )}
       </div>
       <div className="h-px bg-border" />
+      <div className="flex flex-col">
+        {/* A plain download of GET /me/export, with the session cookie. */}
+        <a
+          href={EXPORT_URL}
+          download={EXPORT_FILE_NAME}
+          className="flex min-h-11 w-max items-center text-[14px] leading-5 font-semibold text-fg underline underline-offset-3"
+        >
+          {t("settings.download_data")}
+        </a>
+        <span className="text-[13px] leading-[18px] text-fg-muted">
+          {t("settings.download_data_body")}
+        </span>
+      </div>
       <div className="flex flex-col">
         <button
           type="button"

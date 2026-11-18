@@ -28,6 +28,14 @@ export function errorKind(error: unknown): ErrorKind {
   return "error";
 }
 
+/**
+ * Too many requests in a row (429): the API's rate limits on sign-in,
+ * answers and reports. The request can be made again a little later.
+ */
+export function isRateLimited(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 429;
+}
+
 // The API refuses a state-changing request without this header (CSRF);
 // a browser never adds it to a cross-site form post.
 const csrfHeader: Middleware = {

@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 from fastapi import Request, Response
 from loguru import logger
 
+from app.client_ip import client_ip
 from app.settings import get_settings
 
 if TYPE_CHECKING:
@@ -55,13 +56,6 @@ def setup_logging() -> None:
         )
 
 
-def _client_ip(request: Request) -> str:
-    """The caller's address; nginx passes the real one in X-Real-IP."""
-    if real_ip := request.headers.get("x-real-ip"):
-        return real_ip
-    return request.client.host if request.client else "unknown"
-
-
 async def log_request(
     request: Request,
     call_next: Callable[[Request], Awaitable[Response]],
@@ -72,7 +66,7 @@ async def log_request(
     fields: dict[str, object] = {
         "method": request.method,
         "path": request.url.path,
-        "ip": _client_ip(request),
+        "ip": client_ip(request),
     }
     with logger.contextualize(request_id=request_id):
         try:

@@ -16,6 +16,9 @@ already running instead: everything in that database is dropped first.
 - client: an HTTP client of the app, as a browser with no cookies yet. It
   does not start Postgres. other_client is a second browser.
 - clock: the time the API believes it is, fixed and movable.
+- outbox: the emails the API sent, instead of sending them.
+- rate_limiter: used by every test, so that rate-limit counts start at
+  zero in each.
 
 The environment is exported before anything from app is imported: the
 settings are cached and the engine reads DATABASE_URL at import.
@@ -70,8 +73,11 @@ from testcontainers.community.postgres import PostgresContainer
 from app.db.base import utc_now
 from app.db.session import engine, get_session
 from app.main import app as fastapi_app
+from app.providers.email import get_email_sender
+from app.services.rate_limits import RateLimiter, get_rate_limiter
 from tests.support import commands
 from tests.support import database as db
+from tests.support.outbox import Outbox
 
 
 @pytest_asyncio.fixture(scope="session")
@@ -137,6 +143,17 @@ def app() -> FastAPI:
     return fastapi_app
 
 
+@pytest.fixture(autouse=True)
+def rate_limiter(app: FastAPI) -> Iterator[RateLimiter]:
+    """A rate limiter of the test's own: counts never carry over from
+    another test.
+    """
+    limiter = RateLimiter()
+    app.dependency_overrides[get_rate_limiter] = lambda: limiter
+    yield limiter
+    app.dependency_overrides.pop(get_rate_limiter, None)
+
+
 # Requests go to https, because the session cookie is Secure, and carry
 # the CSRF header, as the web app's do.
 _BASE_URL = "https://test"
@@ -192,3 +209,12 @@ def clock(app: FastAPI) -> Iterator[Clock]:
     app.dependency_overrides[utc_now] = clock
     yield clock
     app.dependency_overrides.pop(utc_now, None)
+
+
+@pytest.fixture
+def outbox(app: FastAPI) -> Iterator[Outbox]:
+    """Keep the emails the API sends instead of sending them."""
+    outbox = Outbox()
+    app.dependency_overrides[get_email_sender] = lambda: outbox
+    yield outbox
+    app.dependency_overrides.pop(get_email_sender, None)

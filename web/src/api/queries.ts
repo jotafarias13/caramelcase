@@ -84,8 +84,13 @@ export function useRequestMagicLink() {
 export function useVerifyMagicLink() {
   const queryClient = useQueryClient();
   return useMutation({
+    // A new account starts in the language and timezone of this device.
     mutationFn: (token: string) =>
-      unwrap(api.POST("/api/v1/auth/magic-link/verify", { body: { token } })),
+      unwrap(
+        api.POST("/api/v1/auth/magic-link/verify", {
+          body: { token, locale: currentLocale(), timezone: browserTimezone() },
+        }),
+      ),
     onSuccess: (me) => resetUserData(queryClient, me),
   });
 }

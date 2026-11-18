@@ -65,7 +65,8 @@
     "not_found_body": "O link pode estar errado ou a página mudou de lugar.",
     "maintenance_code": "git commit -m \"arrumando a casa\"",
     "maintenance_title": "Em manutenção",
-    "maintenance_body": "Estamos arrumando umas coisas. Volta já."
+    "maintenance_body": "Estamos arrumando umas coisas. Volta já.",
+    "rate_limited": "Muitas tentativas seguidas. Espera um pouquinho e tenta de novo."
   },
   "landing": {
     "meta_title": "caramelCase · Ciência da computação em sessões de cinco minutos",
@@ -313,6 +314,59 @@
     "delete_body": "Isso apaga seu progresso, sua sequência e seu rating. Não dá pra desfazer.",
     "save_failed": "Não deu pra salvar. Tenta de novo.",
     "sign_out_failed": "Não deu pra sair. Tenta de novo.",
-    "delete_failed": "Não deu pra excluir sua conta. Tenta de novo."
+    "delete_failed": "Não deu pra excluir sua conta. Tenta de novo.",
+    "download_data": "Baixar meus dados",
+    "download_data_body": "Um arquivo com tudo o que guardamos sobre você."
+  },
+  "legal": {
+    "links_label": "Documentos",
+    "privacy_link": "Privacidade",
+    "terms_link": "Termos",
+    "updated": "Última atualização: [data]",
+    "draft": "Rascunho: o texto jurídico final ainda vai ser escrito. Os trechos entre colchetes são lacunas a preencher.",
+    "privacy": {
+      "title": "Política de privacidade",
+      "intro": "Este texto explica, em linguagem simples, quais dados o caramelCase guarda, para quê, e como você controla isso.",
+      "who_title": "Quem cuida dos seus dados",
+      "who_body": "O caramelCase é mantido por [nome da empresa], [CNPJ], [endereço]. Para falar sobre privacidade, escreva para [e-mail de contato]. O encarregado pelo tratamento de dados é [nome do encarregado].",
+      "data_title": "O que guardamos",
+      "data_body": "- Quando você entra: seu e-mail e, se usar o Google, o nome que ele informar.\n- Suas preferências: idioma, fuso horário, tema, meta diária e se quer ver o porquê de cada alternativa.\n- Se você informar: universidade e curso.\n- Seu estudo: as sessões, cada resposta e o tempo que levou, seu rating, XP, sequência e domínio por tópico.\n- O que você nos manda: os reportes de questões, com o comentário que escrever.\n- Uso do app: alguns eventos, como a visita à página inicial.\n- Registros técnicos: o endereço IP e o horário de cada pedido ao servidor.\n\nNão guardamos senha: você entra com o Google ou com um link enviado por e-mail.",
+      "use_title": "Para que usamos",
+      "use_body": "Para o app funcionar: escolher questões no seu nível, contar sua meta e sua sequência, mostrar seu progresso e mandar o link de entrada.\n\nPara melhorar as questões: os reportes e as taxas de acerto de cada questão, que não dizem quem respondeu.\n\nPara proteger o serviço: limitar pedidos repetidos e investigar abusos.\n\nNão usamos seus dados para publicidade e não os vendemos.",
+      "device_title": "Cookies e o seu aparelho",
+      "device_body": "Usamos um único cookie, que mantém você conectado. Ele não serve para publicidade nem para seguir você em outros sites.\n\nNo seu navegador ficam o idioma, o tema e, se a conexão cair no meio de uma sessão, a resposta que ainda não foi enviada.\n\nAs fontes do app vêm do Google Fonts: para baixá-las, o seu navegador se conecta aos servidores do Google.",
+      "sharing_title": "Com quem compartilhamos",
+      "sharing_body": "- Google, se você entrar com o Google: ele nos informa seu e-mail e seu nome.\n- O serviço que envia nossos e-mails, que recebe seu endereço para mandar o link de entrada: [provedor de e-mail].\n- A hospedagem, onde ficam o servidor e o banco de dados: [provedor de hospedagem], em [país].\n\nFora isso, só compartilhamos dados quando a lei exigir.",
+      "retention_title": "Por quanto tempo",
+      "retention_body": "Enquanto sua conta existir. Quando você exclui a conta, apagamos na hora seus dados e tudo o que você respondeu; as cópias de segurança guardam esses dados por até 14 dias.\n\nContas de visitante sem uso: [prazo a definir]. Registros técnicos: [prazo a definir].",
+      "rights_title": "Seus direitos",
+      "rights_body": "A LGPD garante que você pode saber o que guardamos, receber uma cópia, corrigir e apagar seus dados. No app:\n\n- Baixar seus dados: em Ajustes, “Baixar meus dados”.\n- Apagar tudo: em Ajustes, “Excluir conta”.\n\nPara corrigir um dado ou fazer qualquer outro pedido, escreva para [e-mail de contato].",
+      "basis_title": "Base legal",
+      "basis_body": "[A definir com a assessoria jurídica: a base legal de cada uso dos dados, como a execução do serviço que você pediu ao usar o app.]",
+      "changes_title": "Mudanças nesta política",
+      "changes_body": "Quando esta política mudar, a nova versão aparece aqui com a data de atualização. Se a mudança for grande, avisamos no app."
+    },
+    "terms": {
+      "title": "Termos de uso",
+      "intro": "Ao usar o caramelCase, você concorda com estes termos. Eles são curtos de propósito.",
+      "service_title": "O serviço",
+      "service_body": "O caramelCase é um app para praticar ciência da computação com questões de múltipla escolha. As questões são escritas e conferidas com cuidado, mas podem ter erros: se achar um, use “Reportar questão”.\n\nO app ajuda a estudar. Ele não substitui as aulas e não garante resultado em provas.",
+      "account_title": "Sua conta",
+      "account_body": "Você pode praticar sem cadastro: o app cria uma conta de visitante neste aparelho. Ao entrar com o Google ou com um link por e-mail, seu progresso fica guardado na sua conta.\n\nCuide do acesso ao seu e-mail: é ele que dá entrada na conta.\n\n[Idade mínima para usar o app: a definir.]",
+      "conduct_title": "Uso aceitável",
+      "conduct_body": "- Não copie as questões em massa, nem com programas automáticos.\n- Não tente acessar a conta ou os dados de outra pessoa.\n- Não sobrecarregue o serviço nem tente contornar seus limites.\n\nPodemos suspender a conta de quem fizer isso.",
+      "content_title": "As questões",
+      "content_body": "As questões, as explicações e o resto do conteúdo do app pertencem a [nome da empresa]. Você pode usá-los no seu estudo pessoal; para qualquer outro uso, peça antes.",
+      "price_title": "Preço",
+      "price_body": "O caramelCase é gratuito hoje. Se planos pagos chegarem, as condições aparecem aqui antes de qualquer cobrança.",
+      "liability_title": "Responsabilidade",
+      "liability_body": "[A definir com a assessoria jurídica: a disponibilidade do serviço e os limites de responsabilidade.]",
+      "ending_title": "Encerramento",
+      "ending_body": "Você pode excluir sua conta quando quiser, em Ajustes. Se o caramelCase for encerrado, avisamos com [prazo] de antecedência.",
+      "law_title": "Lei e foro",
+      "law_body": "Estes termos seguem a lei brasileira. Fica eleito o foro de [cidade/UF].",
+      "contact_title": "Contato",
+      "contact_body": "Dúvidas sobre estes termos: [e-mail de contato]."
+    }
   }
 }

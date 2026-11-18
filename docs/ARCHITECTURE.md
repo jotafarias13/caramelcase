@@ -1,6 +1,6 @@
 # Architecture
 
-Each section says what exists today. Milestone 7 reviews it against the finished V1; milestone 8 adds the production path.
+Each section says what exists today: V1, reviewed against the finished app in milestone 7. Milestone 8 adds the production path through nginx.
 
 ## Repository
 
@@ -15,19 +15,37 @@ Each section says what exists today. Milestone 7 reviews it against the finished
 
 ## Request path
 
-Today, in development: browser → Vite dev server (`:5173`) → `/api` proxied to Uvicorn (`:8000`) → FastAPI → Postgres. The browser only ever talks to one origin, so the session cookie is a first-party cookie.
+Today, in development: browser → Vite dev server (`:5173`) → `/api` proxied to Uvicorn (`:8000`) → FastAPI → Postgres. The browser only ever talks to one origin, so the session cookie is a first-party cookie. The production path, through nginx, is milestone 8's.
+
+In the web app, a screen never calls `fetch` itself:
+
+1. A component calls a hook of `web/src/api/queries.ts` (`useMe`, `useCreateSession`, `useAnswer`...), which is TanStack Query around one call.
+2. The call goes through `openapi-fetch` (`web/src/api/client.ts`), typed by `schema.d.ts`, which the API's OpenAPI schema generates. Every request carries the `X-Requested-With` header and the cookie.
+3. `unwrap()` turns any failure into one `ApiError` with the HTTP status and the API's error code; status 0 means the request never reached the server. `errorKind()` picks the full-screen state a failed screen shows (offline, maintenance, 404, error), and `isRateLimited()` the "too many tries" message.
 
 Inside the API a request passes through, in order:
 
-1. `app/logger.py` `log_request`: gives the request an id, logs one line when it ends, returns the id in `X-Request-ID`.
+1. `app/logger.py` `log_request`: gives the request an id, logs one line when it ends with the caller's address (`app/client_ip.py`), returns the id in `X-Request-ID`.
 2. CORS, with origins from settings.
 3. `require_csrf_header` (`app/routes/dependencies.py`), on every route: a POST, PATCH, PUT or DELETE without the `X-Requested-With` header is a 403.
-4. The route's own dependencies: `CurrentUser` (401 without a valid session), `OptionalUser`, and `require_flag(key)` on a flagged route (404 while the flag is off for whoever asks).
+4. The route's own dependencies: `CurrentUser` (401 without a valid session), `OptionalUser`, `require_flag(key)` on a flagged route (404 while the flag is off for whoever asks), and a rate limit on the routes that have one (429, see below).
 5. The route in `app/routes/`: it reads the input, calls one or two functions of `app/services/`, commits, and returns a model from `app/schemas/`.
 6. The service: reads and writes rows, and calls the pure functions of `app/domain/` for every decision. It takes `now` and `settings` as arguments and never commits.
 7. `app/errors.py`: any error leaves as `{"error": {"code": "...", "message": "..."}}`.
 
-To be written: the production path through nginx (milestone 8) and rate limits (milestone 7).
+### Rate limits
+
+| Rule | Counted per | Routes | Setting (default) |
+| --- | --- | --- | --- |
+| `auth` | Network address | `POST /auth/guest`, `POST /auth/magic-link`, `POST /auth/magic-link/verify`, `GET /auth/google/start`, `GET /auth/google/callback` (not logout) | `rate_limit_auth` (300 in 10 minutes) |
+| `sign_in_email` | Email address | `POST /auth/magic-link` | `rate_limit_sign_in_email` (5 an hour) |
+| `answers` | User | `POST /sessions/{id}/answers` | `rate_limit_answers` (60 a minute) |
+| `reports` | User | `POST /questions/{id}/report` | `rate_limit_reports` (10 an hour) |
+
+- Time is cut into fixed windows from the Unix epoch (`domain/rate_limit.py`); a caller may make the limit's number of requests in a window. The next one is a 429 `rate_limited` with `Retry-After`, the seconds left in the window.
+- The counts are kept in memory by each API process (`services/rate_limits.py`), one window per rule: when a new window starts, the old counts are dropped. Each gunicorn worker counts on its own, and a restart clears every count.
+- The network address is `X-Real-IP`, which nginx sets, else the connection's (`app/client_ip.py`).
+- The routes declare it: `dependencies=[Depends(limit_answers)]`; `enforce_rate_limit` in `routes/dependencies.py` counts and refuses.
 
 ### Authentication
 
@@ -38,10 +56,16 @@ To be written: the production path through nginx (milestone 8) and rate limits (
 - Signing in (`app/services/sign_in.py`) is the same for Google and for an email link. If nobody has the identity or the email, the guest in that browser becomes the account. If an account has it, the student is signed in to that account and the guest's history is merged into it (`merge_guest`), then the guest is deleted. Either way the old token is ended and a new one issued.
 - An email link (`app/services/magic_links.py`) is a random token stored hashed, spent by one UPDATE that also checks the 15 minutes.
 - Google (`app/providers/google.py`) is the authorization-code flow through Authlib. The `state` goes to Google and into a short-lived httpOnly cookie, and the callback compares the two.
+- An account that a sign-in creates, with no guest behind it, starts in the language and timezone of the device: the web app sends them in the body of `/auth/magic-link/verify` and in the query of `/auth/google/start`, which keeps them in a second short-lived cookie for the callback. A guest who signs in keeps their own.
 
 ### What a session never sends
 
 `POST /sessions` and `GET /sessions/{id}` return `SessionQuestion`: stem, code and options with key and text only. That model has no field for the correct key, the reasons or the explanation, and `app/services/session_views.py` reads them in one function, `answer_feedback`, which runs after the answer is recorded. Tests check both the responses and the OpenAPI schema.
+
+### A user's data: export and deletion
+
+- `GET /me/export` (`services/account.export_user`) returns the `users` row and, table by table, every row about the user: the tables in `EXPORTED_BY_USER_ID`, the referrals on either side, and the tutor messages of the user's threads. A table of V2 or V3 is there as an empty list. Session tokens (`sessions_auth`) and sign-in links are credentials and are left out. A test fails when a table that points at `users` is in neither the export nor the list of credentials. Settings offers it as "Baixar meus dados", a plain download.
+- `DELETE /me` (`services/account.delete_user`) deletes the `users` row; every foreign key to `users` is `ON DELETE CASCADE`, which a test checks, so every other row of the user goes with it, answers included. The sign-in links sent to the address are deleted by address. The questions keep the counts and ratings the answers moved, which say nothing about who answered.
 
 ## API layout
 
@@ -68,7 +92,7 @@ To be written: the production path through nginx (milestone 8) and rate limits (
 | `index.html` | The one HTML file, served for every address. The build writes the landing page into it as static HTML |
 | `src/main.tsx` | Entry: loads `design/tokens.css`, then Tailwind, applies the theme |
 | `src/app/` | `App` and its providers, the route table (`routes.tsx`), the navigation shell (`AppShell`), `RequireUser` (creates the guest, sends a new user to onboarding) and `Flagged` (a route behind a feature flag) |
-| `src/features/` | One folder per screen: `landing`, `auth` (sign-in and the link's landing page), `onboarding`, `home`, `catalog`, `session`, `summary`, `profile`, `settings`. Rules a screen decides by are pure functions in a `rules.ts` beside it |
+| `src/features/` | One folder per screen: `landing`, `auth` (sign-in and the link's landing page), `onboarding`, `home`, `catalog`, `session`, `summary`, `profile`, `settings`, `legal` (the privacy policy and the terms). Rules a screen decides by are pure functions in a `rules.ts` beside it |
 | `src/components/` | Shared components (`AnswerOption`, `CodeBlock`, `TopicNode`, `StreakCard`, `StateScreen` and others); `ui/` holds the primitives of `design/README.md` |
 | `src/api/` | `client.ts` (the typed fetch client and `ApiError`), `queries.ts` (every API call as a TanStack Query hook), `types.ts`; `openapi.json` and `schema.d.ts` are written by `make types` and committed |
 | `src/i18n/` | `pt-BR.json`, `en.json` and the setup. All interface text is here |
@@ -77,11 +101,12 @@ To be written: the production path through nginx (milestone 8) and rate limits (
 | `src/prerender.tsx` | Build-time entry that renders the landing page to HTML |
 | `src/styles/index.css` | Tailwind entry and base rules. No token is defined here |
 | `shots/` | Screenshots of the app beside the mockups (`npm run shots`) |
+| `e2e/` | The Playwright test: a guest plays a whole session against the real stack (`make e2e`) |
 | `eslint-rules/` | `no-hardcoded-copy`: fails the lint on interface text outside the translation files |
 
 ## Data model
 
-Every table of V1, V2 and V3 exists since milestone 2: 36 tables, defined as SQLAlchemy models in `api/app/db/models/` and created by the Alembic migrations in `api/app/db/migrations/versions/`. Milestone 7 completes this section with how the tables are used.
+Every table of V1, V2 and V3 exists since milestone 2: 36 tables, defined as SQLAlchemy models in `api/app/db/models/` and created by the Alembic migrations in `api/app/db/migrations/versions/`. V1 writes 21 of them; the rest wait, empty, for their features (see "How V1 uses the tables").
 
 ### Conventions
 
@@ -134,6 +159,29 @@ Every table of V1, V2 and V3 exists since milestone 2: 36 tables, defined as SQL
 | | `tutor_threads`, `tutor_messages` | A conversation with the tutor |
 | | `referrals` | One student invited by another |
 
+### How V1 uses the tables
+
+What each thing a student does writes. Everything happens in the request's one transaction.
+
+| A student... | Route | Rows written |
+| --- | --- | --- |
+| Opens the app for the first time | `POST /auth/guest` | `users` (a guest), `user_settings`, `sessions_auth` |
+| Goes through onboarding, changes a setting | `PATCH /me/settings` | `users` (language, timezone, university, course, current subject), `user_settings`, `user_subjects` |
+| Starts a session | `POST /sessions` | `practice_sessions`, with its fixed list of question ids |
+| Answers | `POST /sessions/{id}/answers` | `attempts`; on a first attempt, `questions` (rating and counts) and `user_subject_ratings`; `user_topic_mastery`, `daily_activity`, the session's counts; `review_items` when wrong |
+| Finishes | `POST /sessions/{id}/finish` | the session's end and XP, `daily_activity`, `streaks` |
+| Asks for an email link | `POST /auth/magic-link` | `magic_links` |
+| Signs in | `/auth/magic-link/verify`, `/auth/google/callback` | `users` (the guest becomes the account, or is merged into it and deleted), `auth_identities`, `sessions_auth` (the old token ended, a new one) |
+| Reports a question | `POST /questions/{id}/report` | `question_reports` |
+| Uses the app | `POST /events` | `events` (the landing page's two events, in V1) |
+| Deletes the account | `DELETE /me` | everything of the user is deleted |
+
+Home, the profile and the catalog read `daily_activity`, `streaks`, `user_subject_ratings`, `user_topic_mastery`, `subjects` and `topics`. Questions reach students only inside a session, from `questions` and `question_translations`.
+
+Written by commands, never by a student: `subjects`, `topics`, `questions` and `question_translations` (`import-content`, `publish-subjects`), `plans` and `feature_flags` (`seed`).
+
+Empty in V1, for V2 and V3: `topic_edges`, `push_subscriptions`, `lives`, `league_weeks`, `league_memberships`, `achievements`, `user_achievements`, `exam_templates`, `exam_attempts`, `subscriptions`, `usage_counters`, `ad_events`, `tutor_threads`, `tutor_messages`, `referrals`. The columns of V1 tables that only those features use (`streaks.freezes`, `lost_length`, `lost_at`; `user_settings.daily_reminder`, `weekly_email`, `reminder_time`; `users.referral_code`) keep their defaults.
+
 ### Migrations and seeds
 
 - `alembic upgrade head` creates the schema; `alembic check` fails when a model and the migrations differ, and a test runs it. Both read the database URL from settings.
@@ -178,6 +226,7 @@ Every rule is a pure function in `api/app/domain/`, with unit tests in `api/test
 | Topic mastery | `mastery.mastery_level` | `mastery_new_below_answers`, `mastery_learning_below`, `mastery_mastered_from`, `mastery_mastered_min_answers` | `services/catalog` |
 | Review schedule | `review.first_review`, `review.after_correct_review` | `review_intervals_days` | `services/practice` (a wrong answer); the rest from milestone 9 |
 | Is a flag on for this user | `flags.flag_is_on` | none | `services/flags` |
+| Rate limits: the window, the limit, Retry-After | `rate_limit.window_start`, `is_over_limit`, `retry_after_seconds` | `rate_limit_auth`, `rate_limit_sign_in_email`, `rate_limit_answers`, `rate_limit_reports` | `routes/dependencies.enforce_rate_limit` |
 | What a user may do | `entitlements.entitlements_for` | `plans` | `services/config`; enforced from milestone 10 |
 | The format of a question | `question_doc.QuestionDoc` | the `question_*` limits | the content tools and the importer |
 
@@ -192,3 +241,15 @@ A flag is a row of `feature_flags` with a state: `off`, `staff` or `on`. Every k
 - **V1 has no flagged route.** The mechanism is tested with a route the test adds; milestone 9 is its first real use.
 
 Switching a flag has no command yet (the admin console is milestone 9): `UPDATE feature_flags SET state = 'on' WHERE key = '<key>';`.
+
+## Tests
+
+| Kind | Where | Runs against | Command |
+| --- | --- | --- | --- |
+| Business rules | `api/tests/domain/` | Pure functions, no database | `make test-api` |
+| API | `api/tests/test_*_api.py` and the others | A real Postgres 16 that testcontainers starts; each test in one transaction, rolled back | `make test-api` |
+| Content | `api/tests/test_content_bank.py`, `api/tests/content_tools/` | Every line of `content/bank/`; the tools on fixed samples | `make test-api` |
+| Components | `web/src/**/*.test.tsx` | The whole app in jsdom against a mock API (`web/src/test/`) | `make test-web` |
+| End to end | `web/e2e/` | Chromium against the docker compose stack, seeded by `make seed`, in Portuguese at 360 px and in English at 1280 px | `make e2e` |
+
+CI (`.github/workflows/ci.yaml`) runs lint, type checks and the first four on every push, and builds the web app. A third job does what a new developer does, `make up` and `make seed`, and then `make e2e`.

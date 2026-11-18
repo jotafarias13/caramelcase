@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router";
-import { errorKind } from "@/api/client";
+import { errorKind, isRateLimited } from "@/api/client";
 import { useConfig, useRequestMagicLink } from "@/api/queries";
 import { Mel } from "@/components/Mel";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,8 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/toast-store";
 import { cn } from "@/lib/utils";
-import { GOOGLE_START_URL, looksLikeEmail } from "./auth";
+import { LegalLinks } from "@/features/legal/LegalLinks";
+import { googleStartUrl, looksLikeEmail } from "./auth";
 import { AuthFrame, AuthIntro } from "./AuthFrame";
 
 /**
@@ -30,7 +31,9 @@ export default function SignInPage() {
     } catch (error) {
       toast({
         kind: errorKind(error) === "offline" ? "offline" : "error",
-        message: t("signin.send_failed"),
+        message: isRateLimited(error)
+          ? t("states.rate_limited")
+          : t("signin.send_failed"),
       });
       return false;
     }
@@ -128,6 +131,7 @@ function SignInForm({
       >
         {t("signin.without_account")}
       </Link>
+      <LegalLinks className="justify-center" />
     </AuthFrame>
   );
 }
@@ -139,7 +143,7 @@ function GoogleButton() {
     <>
       <div className="pr-[3px]">
         <a
-          href={GOOGLE_START_URL}
+          href={googleStartUrl()}
           className={cn(
             buttonVariants({ variant: "secondary" }),
             "w-full gap-2.5 px-[18px]",

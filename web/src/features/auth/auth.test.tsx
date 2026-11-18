@@ -1,11 +1,12 @@
 import { QueryClient } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { StrictMode } from "react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { AppProviders } from "@/app/providers";
 import { AppRoutes } from "@/app/routes";
 import { initI18n } from "@/i18n";
+import { browserTimezone } from "@/lib/timezone";
 import { config, me, world } from "@/test/fixtures";
 import { apiError, type Routes } from "@/test/mock-api";
 import { renderApp } from "@/test/render";
@@ -42,12 +43,25 @@ describe("sign-in", () => {
     expect(api.callsTo("POST /auth/guest")).toHaveLength(0);
   });
 
-  it("sends the browser to the API's Google route", async () => {
+  it("sends the browser to the API's Google route, with the language and timezone in use", async () => {
     renderApp("/signin", { routes: visitor });
 
-    expect(
-      await screen.findByRole("link", { name: /Continuar com Google/ }),
-    ).toHaveAttribute("href", "/api/v1/auth/google/start");
+    const link = await screen.findByRole("link", {
+      name: /Continuar com Google/,
+    });
+    const url = new URL(link.getAttribute("href") ?? "", "http://app");
+    expect(url.pathname).toBe("/api/v1/auth/google/start");
+    expect(url.searchParams.get("locale")).toBe("pt-BR");
+    expect(url.searchParams.get("timezone")).toBe(browserTimezone());
+  });
+
+  it("asks Google for an English account when the app is in English", async () => {
+    renderApp("/signin", { routes: visitor, locale: "en" });
+
+    const link = await screen.findByRole("link", {
+      name: /Continue with Google/,
+    });
+    expect(link.getAttribute("href")).toContain("locale=en");
   });
 
   it("hides Google when this server has no Google sign-in", async () => {
@@ -146,6 +160,41 @@ describe("sign-in", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("says to wait when too many links were asked for", async () => {
+    const { user } = renderApp("/signin", {
+      routes: {
+        ...visitor,
+        "POST /auth/magic-link": apiError(429, "rate_limited"),
+      },
+    });
+
+    await user.type(
+      await screen.findByLabelText("E-mail"),
+      "carol@email.com{Enter}",
+    );
+
+    expect(
+      await screen.findByText(
+        "Muitas tentativas seguidas. Espera um pouquinho e tenta de novo.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("links to the privacy policy and the terms", async () => {
+    renderApp("/signin", { routes: visitor });
+
+    const legal = await screen.findByRole("navigation", {
+      name: "Documentos",
+    });
+    expect(
+      within(legal).getByRole("link", { name: "Privacidade" }),
+    ).toHaveAttribute("href", "/privacy");
+    expect(within(legal).getByRole("link", { name: "Termos" })).toHaveAttribute(
+      "href",
+      "/terms",
+    );
+  });
+
   it("lets the student carry on without an account", async () => {
     renderApp("/signin", { routes: visitor });
 
@@ -162,7 +211,12 @@ describe("auth callback", () => {
     await screen.findAllByRole("navigation", { name: "Principal" });
     const verifies = api.callsTo("POST /auth/magic-link/verify");
     expect(verifies).toHaveLength(1);
-    expect(verifies[0].body).toEqual({ token: "abc123" });
+    // A new account starts in this device's language and timezone.
+    expect(verifies[0].body).toEqual({
+      token: "abc123",
+      locale: "pt-BR",
+      timezone: browserTimezone(),
+    });
   });
 
   it("uses the signed-in account from then on, without making a guest", async () => {

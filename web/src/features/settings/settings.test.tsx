@@ -213,6 +213,37 @@ describe("settings: account", () => {
   });
 });
 
+describe("settings: your data", () => {
+  it("downloads everything the API keeps about the user", async () => {
+    await openSettings();
+
+    const download = screen.getByRole("link", { name: "Baixar meus dados" });
+    expect(download).toHaveAttribute("href", "/api/v1/me/export");
+    expect(download).toHaveAttribute("download", "caramelcase-data.json");
+  });
+
+  it("offers a guest the download too", async () => {
+    await openSettings({ routes: { "GET /me": guest } });
+
+    expect(
+      screen.getByRole("link", { name: "Baixar meus dados" }),
+    ).toBeInTheDocument();
+  });
+
+  it("links to the privacy policy and the terms", async () => {
+    await openSettings();
+
+    const legal = screen.getByRole("navigation", { name: "Documentos" });
+    expect(
+      within(legal).getByRole("link", { name: "Privacidade" }),
+    ).toHaveAttribute("href", "/privacy");
+    expect(within(legal).getByRole("link", { name: "Termos" })).toHaveAttribute(
+      "href",
+      "/terms",
+    );
+  });
+});
+
 describe("settings: deleting the account", () => {
   it("asks first, with the safe choice first and no close button", async () => {
     const { api, user } = await openSettings();

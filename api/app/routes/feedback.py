@@ -2,7 +2,7 @@
 
 import uuid
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.db.session import SessionDep
 from app.routes.dependencies import (
@@ -10,6 +10,7 @@ from app.routes.dependencies import (
     Now,
     OptionalUser,
     SettingsDep,
+    limit_reports,
 )
 from app.schemas.stats import (
     EventsRequest,
@@ -23,7 +24,10 @@ router = APIRouter()
 
 
 @router.post(
-    "/questions/{question_id}/report", status_code=201, tags=["reports"]
+    "/questions/{question_id}/report",
+    status_code=201,
+    tags=["reports"],
+    dependencies=[Depends(limit_reports)],
 )
 async def post_report(
     question_id: uuid.UUID,

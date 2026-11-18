@@ -3,9 +3,7 @@ links, Google sign-in, and what signing in does to a guest's history.
 """
 
 import hashlib
-import re
 import uuid
-from collections.abc import Iterator
 from http.cookies import SimpleCookie
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
@@ -24,7 +22,6 @@ from app.db.models import (
     MagicLink,
     User,
 )
-from app.providers.email import Email, get_email_sender
 from app.providers.google import (
     AUTHORIZE_URL,
     TOKEN_URL,
@@ -38,35 +35,12 @@ from app.providers.google import (
 from app.settings import Settings
 from tests.conftest import CSRF_HEADERS, Clock
 from tests.support.api import API, guest, play, publish_bank
+from tests.support.outbox import Outbox
 
 pytestmark = pytest.mark.usefixtures("clock", "session")
 
 COOKIE = "cc_session"
 CAROL = "carol@example.com"
-
-
-class Outbox:
-    """Stands in for the email sender and keeps what was sent."""
-
-    def __init__(self) -> None:
-        self.emails: list[Email] = []
-
-    async def send(self, email: Email) -> None:
-        self.emails.append(email)
-
-    def token(self) -> str:
-        """The token of the link in the last email."""
-        match = re.search(r"/auth/callback\?token=(\S+)", self.emails[-1].text)
-        assert match is not None
-        return match.group(1)
-
-
-@pytest.fixture
-def outbox(app: FastAPI) -> Iterator[Outbox]:
-    outbox = Outbox()
-    app.dependency_overrides[get_email_sender] = lambda: outbox
-    yield outbox
-    app.dependency_overrides.pop(get_email_sender, None)
 
 
 async def _sign_in_by_email(
@@ -457,6 +431,45 @@ async def test_a_link_opened_without_a_guest_creates_the_account(
     assert account["is_guest"] is False
     assert account["email"] == CAROL
     assert account["settings"]["daily_goal"] == 20
+    assert account["locale"] == "pt-BR"
+    assert account["timezone"] == "America/Sao_Paulo"
+
+
+async def test_a_new_account_takes_the_language_and_timezone_of_the_device(
+    client: AsyncClient, outbox: Outbox
+) -> None:
+    """Someone who signs in before playing reads the app in English: the
+    account must not switch it to Portuguese.
+    """
+    await client.post(f"{API}/auth/magic-link", json={"email": CAROL})
+
+    response = await client.post(
+        f"{API}/auth/magic-link/verify",
+        json={
+            "token": outbox.token(),
+            "locale": "en",
+            "timezone": "Europe/Lisbon",
+        },
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["locale"] == "en"
+    assert response.json()["timezone"] == "Europe/Lisbon"
+
+
+async def test_a_guest_who_signs_in_keeps_their_own_language(
+    client: AsyncClient, outbox: Outbox
+) -> None:
+    await guest(client, locale="pt-BR", timezone="America/Manaus")
+    await client.post(f"{API}/auth/magic-link", json={"email": CAROL})
+
+    response = await client.post(
+        f"{API}/auth/magic-link/verify",
+        json={"token": outbox.token(), "locale": "en", "timezone": "UTC"},
+    )
+
+    assert response.json()["locale"] == "pt-BR"
+    assert response.json()["timezone"] == "America/Manaus"
 
 
 async def test_signing_in_again_returns_the_same_account(
@@ -637,17 +650,59 @@ async def test_a_callback_with_a_state_this_browser_did_not_start_is_refused(
     assert COOKIE not in client.cookies
 
 
-async def test_the_state_cookie_is_httponly_and_only_for_the_google_routes(
+async def test_the_flow_cookies_are_httponly_and_only_for_the_google_routes(
     client: AsyncClient,
 ) -> None:
     started = await client.get(f"{API}/auth/google/start")
 
-    cookie = _set_cookie(started, "cc_oauth_state")
-    assert cookie["httponly"] is True
-    assert cookie["secure"] is True
-    assert cookie["samesite"] == "lax"
-    assert cookie["path"] == "/api/v1/auth/google"
-    assert int(cookie["max-age"]) == 600
+    for name in ("cc_oauth_state", "cc_oauth_device"):
+        cookie = _set_cookie(started, name)
+        assert cookie["httponly"] is True
+        assert cookie["secure"] is True
+        assert cookie["samesite"] == "lax"
+        assert cookie["path"] == "/api/v1/auth/google"
+        assert int(cookie["max-age"]) == 600
+
+
+async def test_google_creates_an_account_in_the_devices_language(
+    client: AsyncClient,
+) -> None:
+    started = await client.get(
+        f"{API}/auth/google/start",
+        params={"locale": "en", "timezone": "America/Recife"},
+    )
+    callback = urlsplit(started.headers["location"])
+
+    returned = await client.get(f"{callback.path}?{callback.query}")
+
+    assert returned.headers["location"] == (
+        "http://localhost:5173/auth/callback"
+    )
+    account = (await client.get(f"{API}/me")).json()
+    assert account["is_guest"] is False
+    assert account["locale"] == "en"
+    assert account["timezone"] == "America/Recife"
+    # Both flow cookies are spent.
+    assert "cc_oauth_state" not in client.cookies
+    assert "cc_oauth_device" not in client.cookies
+
+
+async def test_google_without_the_devices_language_uses_the_defaults(
+    client: AsyncClient,
+) -> None:
+    await _google_round_trip(client)
+
+    account = (await client.get(f"{API}/me")).json()
+    assert account["locale"] == "pt-BR"
+    assert account["timezone"] == "America/Sao_Paulo"
+
+
+async def test_a_language_or_timezone_that_does_not_exist_is_refused(
+    client: AsyncClient,
+) -> None:
+    for params in ({"locale": "fr"}, {"timezone": "Nowhere/City"}):
+        response = await client.get(f"{API}/auth/google/start", params=params)
+        assert response.status_code == 422
 
 
 class _Google:

@@ -11,11 +11,12 @@ src/
   app/          App, providers, routes, the navigation shell, RequireUser, Flagged
   components/   shared pieces: ui/ (design/README.md's components), StateScreen, Mel, Wordmark
   features/     one directory per screen: landing, auth, onboarding, home, catalog,
-                session, summary, profile, settings
+                session, summary, profile, settings, legal
   i18n/         pt-BR.json, en.json and the setup
   lib/          theme, preferences, flags, highlight, analytics, online
   test/         fixtures.ts (sample API data), mock-api.ts, render.tsx
 shots/          screenshots of the app next to the mockups
+e2e/            the Playwright test against the real stack
 eslint-rules/   no-hardcoded-copy
 ```
 
@@ -32,6 +33,18 @@ eslint-rules/   no-hardcoded-copy
 ## Tests
 
 `npm test` runs Vitest. `renderApp("/home", { routes })` renders the whole app at an address against a mock API whose answers are the "world" of `src/test/fixtures.ts`; `routes` replaces answers (`"GET /me": guest`, `"POST /sessions": apiError(409, "no_questions")`). `api.callsTo("PATCH /me/settings")` lists what the app sent. Look things up the way a student would: by role and name.
+
+## The end-to-end test
+
+`e2e/guest-session.spec.ts` is the one Playwright test: a new guest goes from the landing page through onboarding and ten questions to the summary, then Home, Profile and Settings, against the real API and database. It runs in Portuguese at 360 px and in English at 1280 px, and finds everything by role and by the texts of the translation files, so a change of copy does not break it.
+
+```bash
+make up && make seed      # from the repository root, once
+npx playwright install chromium
+npm run e2e               # or make e2e from the root
+```
+
+It is part of CI, not of `npm test`.
 
 ## Checking a screen against its mockup
 
