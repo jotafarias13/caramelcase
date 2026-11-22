@@ -314,6 +314,36 @@ def test_sql_is_split_at_the_end_of_each_statement_not_at_each_semicolon() -> (
     assert outcome.output == "2\n"
 
 
+def test_sql_opens_a_transaction_only_where_the_code_says_begin() -> None:
+    code = (
+        "CREATE TABLE conta (saldo INTEGER);\n"
+        "INSERT INTO conta VALUES (100);\n"
+        "BEGIN;\n"
+        "UPDATE conta SET saldo = 0;\n"
+        "ROLLBACK;\n"
+        "SELECT saldo FROM conta"
+    )
+
+    outcome = run_code(code, CodeLanguage.SQL, SETTINGS)
+
+    assert outcome.ok, outcome.detail
+    assert outcome.output == "100\n"
+
+
+def test_sql_rollback_without_a_transaction_is_an_error() -> None:
+    code = (
+        "CREATE TABLE conta (saldo INTEGER);\n"
+        "INSERT INTO conta VALUES (100);\n"
+        "ROLLBACK;\n"
+        "SELECT COUNT(*) FROM conta"
+    )
+
+    outcome = run_code(code, CodeLanguage.SQL, SETTINGS)
+
+    assert not outcome.ok
+    assert "no transaction is active" in outcome.detail
+
+
 # ---- checking a question ----
 
 

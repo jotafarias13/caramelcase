@@ -1,15 +1,15 @@
 # Question bank report
 
-Written by `python -m content.tools report` on 2026-11-17, from `content/bank/` and `content/pipeline-log.jsonl`. Run the tool again instead of editing this file.
+Written by `python -m content.tools report` on 2026-11-22, from `content/bank/` and `content/pipeline-log.jsonl`. Run the tool again instead of editing this file.
 
 ## Totals
 
 | Subject | Questions | Level 1 to 2 | Level 3 | Level 4 to 5 | With code | Code run | Key is longest | Human-checked |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Introdução à Programação | 352 | 25% | 50% | 25% | 206 | 181 | 21% | 0 |
-| Estruturas de Dados | 264 | 27% | 50% | 23% | 105 | 100 | 22% | 0 |
-| Banco de Dados | 264 | 25% | 50% | 25% | 115 | 109 | 22% | 0 |
-| **Total** | 880 | 26% | 50% | 24% | 426 | 390 | 22% | 0 |
+| Introdução à Programação | 416 | 25% | 50% | 25% | 257 | 223 | 19% | 0 |
+| Estruturas de Dados | 418 | 27% | 50% | 23% | 147 | 142 | 23% | 0 |
+| Banco de Dados | 432 | 25% | 50% | 25% | 154 | 132 | 29% | 0 |
+| **Total** | 1266 | 26% | 50% | 24% | 558 | 497 | 24% | 0 |
 
 The target spread is 25% level 1 to 2, 50% level 3 and 25% level 4 to 5. "Code run" counts the questions whose code the run-code tool executed and checked. "Key is longest" looks only at the questions in which one option is longer than the other three, in Portuguese, and gives the share of them whose longest option is the correct one: near 25% when length does not give the answer away.
 
@@ -28,9 +28,9 @@ The target spread is 25% level 1 to 2, 50% level 3 and 25% level 4 to 5. "Code r
 | Vetores | 32 | 4 | 4 | 16 | 6 | 2 | 25% | 50% | 25% |
 | Matrizes | 32 | 3 | 5 | 16 | 6 | 2 | 25% | 50% | 25% |
 | Strings | 32 | 4 | 4 | 16 | 6 | 2 | 25% | 50% | 25% |
-| Registros | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Enumerações e uniões | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| **Total** | 352 | 43 | 45 | 176 | 67 | 21 | 25% | 50% | 25% |
+| Registros | 32 | 3 | 5 | 16 | 6 | 2 | 25% | 50% | 25% |
+| Enumerações e uniões | 32 | 4 | 4 | 16 | 6 | 2 | 25% | 50% | 25% |
+| **Total** | 416 | 50 | 54 | 208 | 79 | 25 | 25% | 50% | 25% |
 
 ## Estruturas de Dados
 
@@ -48,14 +48,14 @@ The target spread is 25% level 1 to 2, 50% level 3 and 25% level 4 to 5. "Code r
 | Ordenação elementar | 22 | 2 | 4 | 11 | 4 | 1 | 27% | 50% | 23% |
 | Ordenação eficiente | 22 | 2 | 4 | 11 | 4 | 1 | 27% | 50% | 23% |
 | Tabelas de dispersão | 22 | 2 | 3 | 11 | 5 | 1 | 23% | 50% | 27% |
-| Árvores binárias | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Árvores binárias de busca | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Árvores balanceadas | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Árvores B e árvores digitais | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Heaps e listas de prioridade | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Conjuntos disjuntos | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Casamento de cadeias | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| **Total** | 264 | 24 | 47 | 132 | 49 | 12 | 27% | 50% | 23% |
+| Árvores binárias | 22 | 2 | 4 | 11 | 4 | 1 | 27% | 50% | 23% |
+| Árvores binárias de busca | 22 | 2 | 4 | 11 | 4 | 1 | 27% | 50% | 23% |
+| Árvores balanceadas | 22 | 2 | 4 | 11 | 4 | 1 | 27% | 50% | 23% |
+| Árvores B e árvores digitais | 22 | 2 | 4 | 11 | 4 | 1 | 27% | 50% | 23% |
+| Heaps e listas de prioridade | 22 | 2 | 4 | 11 | 4 | 1 | 27% | 50% | 23% |
+| Conjuntos disjuntos | 22 | 2 | 4 | 11 | 4 | 1 | 27% | 50% | 23% |
+| Casamento de cadeias | 22 | 2 | 4 | 11 | 4 | 1 | 27% | 50% | 23% |
+| **Total** | 418 | 38 | 75 | 209 | 77 | 19 | 27% | 50% | 23% |
 
 ## Banco de Dados
 
@@ -72,14 +72,14 @@ The target spread is 25% level 1 to 2, 50% level 3 and 25% level 4 to 5. "Code r
 | SQL: junções | 24 | 3 | 3 | 12 | 4 | 2 | 25% | 50% | 25% |
 | SQL: agregação e agrupamento | 24 | 3 | 3 | 12 | 4 | 2 | 25% | 50% | 25% |
 | SQL: subconsultas | 24 | 3 | 3 | 12 | 5 | 1 | 25% | 50% | 25% |
-| Visões | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Gatilhos e procedimentos armazenados | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Armazenamento e índices | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Segurança em banco de dados | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Transações e propriedades ACID | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Serialização e níveis de isolamento | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| Controle de concorrência | 0 | 0 | 0 | 0 | 0 | 0 | - | - | - |
-| **Total** | 264 | 31 | 35 | 132 | 47 | 19 | 25% | 50% | 25% |
+| Visões | 24 | 3 | 3 | 12 | 5 | 1 | 25% | 50% | 25% |
+| Gatilhos e procedimentos armazenados | 24 | 3 | 3 | 12 | 5 | 1 | 25% | 50% | 25% |
+| Armazenamento e índices | 24 | 3 | 3 | 12 | 5 | 1 | 25% | 50% | 25% |
+| Segurança em banco de dados | 24 | 2 | 4 | 12 | 5 | 1 | 25% | 50% | 25% |
+| Transações e propriedades ACID | 24 | 2 | 4 | 12 | 5 | 1 | 25% | 50% | 25% |
+| Serialização e níveis de isolamento | 24 | 3 | 3 | 12 | 5 | 1 | 25% | 50% | 25% |
+| Controle de concorrência | 24 | 3 | 3 | 12 | 4 | 2 | 25% | 50% | 25% |
+| **Total** | 432 | 50 | 58 | 216 | 81 | 27 | 25% | 50% | 25% |
 
 ## Pipeline
 
@@ -87,18 +87,18 @@ Failure rate at each step, over every check the tools logged. A question that fa
 
 | Subject | Step | Checked | Failed | Failure rate |
 | --- | --- | --- | --- | --- |
-| Introdução à Programação | Validate | 352 | 0 | 0% |
-| Introdução à Programação | Run code | 181 | 0 | 0% |
-| Introdução à Programação | Dedupe | 352 | 0 | 0% |
-| Introdução à Programação | Blind solve | 352 | 0 | 0% |
-| Introdução à Programação | Promote (failed means dropped) | 352 | 0 | 0% |
-| Estruturas de Dados | Validate | 286 | 0 | 0% |
-| Estruturas de Dados | Run code | 108 | 0 | 0% |
-| Estruturas de Dados | Dedupe | 264 | 0 | 0% |
-| Estruturas de Dados | Blind solve | 264 | 0 | 0% |
-| Estruturas de Dados | Promote (failed means dropped) | 264 | 0 | 0% |
-| Banco de Dados | Validate | 264 | 0 | 0% |
-| Banco de Dados | Run code | 109 | 0 | 0% |
-| Banco de Dados | Dedupe | 264 | 0 | 0% |
-| Banco de Dados | Blind solve | 264 | 0 | 0% |
-| Banco de Dados | Promote (failed means dropped) | 264 | 0 | 0% |
+| Introdução à Programação | Validate | 416 | 0 | 0% |
+| Introdução à Programação | Run code | 223 | 0 | 0% |
+| Introdução à Programação | Dedupe | 416 | 0 | 0% |
+| Introdução à Programação | Blind solve | 416 | 0 | 0% |
+| Introdução à Programação | Promote (failed means dropped) | 416 | 0 | 0% |
+| Estruturas de Dados | Validate | 418 | 0 | 0% |
+| Estruturas de Dados | Run code | 142 | 0 | 0% |
+| Estruturas de Dados | Dedupe | 418 | 0 | 0% |
+| Estruturas de Dados | Blind solve | 418 | 0 | 0% |
+| Estruturas de Dados | Promote (failed means dropped) | 418 | 0 | 0% |
+| Banco de Dados | Validate | 432 | 0 | 0% |
+| Banco de Dados | Run code | 132 | 0 | 0% |
+| Banco de Dados | Dedupe | 432 | 0 | 0% |
+| Banco de Dados | Blind solve | 432 | 0 | 0% |
+| Banco de Dados | Promote (failed means dropped) | 432 | 0 | 0% |
