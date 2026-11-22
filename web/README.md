@@ -9,11 +9,13 @@ src/
   api/          client.ts (fetch, ApiError), queries.ts (every call, as hooks), types.ts,
                 schema.d.ts and openapi.json (generated: make types)
   app/          App, providers, routes, the navigation shell, RequireUser, Flagged
-  components/   shared pieces: ui/ (design/README.md's components), StateScreen, Mel, Wordmark
+  components/   shared pieces: ui/ (design/README.md's components), StateScreen, Mel, Wordmark,
+                Explain (what a number means)
   features/     one directory per screen: landing, auth, onboarding, home, catalog,
                 session, summary, profile, settings, legal
   i18n/         pt-BR.json, en.json and the setup
-  lib/          theme, preferences, flags, highlight, analytics, monitoring, online
+  lib/          theme, preferences, flags, highlight, analytics, monitoring, online,
+                hints (the one-time hints)
   test/         fixtures.ts (sample API data), mock-api.ts, render.tsx
 shots/          screenshots of the app next to the mockups
 e2e/            the Playwright test against the real stack
@@ -29,6 +31,7 @@ eslint-rules/   no-hardcoded-copy
 - **Nothing depends on hover**, touch targets are at least 44 px, and anything at a screen edge adds `env(safe-area-inset-*)`.
 - **Icons** are `lucide-react`, by the name in the mockup's `data-lucide`. **Mel** is `<Mel pose="wave" scale={6} />`, or `head` for the head crop.
 - **Flags:** `useFlag("reminders")` for a piece of a screen, `<Flagged flag="...">` around a lazy route.
+- **A number a student may not understand explains itself.** Wrap its button in `<Explain topic="xp">`, with the dotted `explainedLabel` on its label, or put an `<ExplainButton>` beside it where there is no button. `hint` also opens it once without being asked: set it in one place per topic, with the condition under which it makes sense. A new topic is an id in `HINTS` (`src/lib/hints.ts`), a text under `explain` in both translation files and a case in `useExplanation`; a number it quotes comes from `rules` in `/config`, never from the copy. In a test, a hint is a `dialog` named "Explicação": name the dialog you mean (`{ name: "Trocar matéria" }`) rather than asking for any.
 
 ## Tests
 

@@ -179,6 +179,7 @@
     "goal_met": "Meta de hoje batida",
     "next_topic": "Próximo: {{topic}}",
     "topics": "Tópicos",
+    "topics_note": "Cada sessão mistura os tópicos da matéria.",
     "topic_mastered": "Dominado",
     "topic_in_progress": "Em andamento",
     "topic_available": "Começar",
@@ -210,6 +211,17 @@
     "lost_body_one": "Sua sequência de {{count}} dia terminou. Acontece. Bora começar outra?",
     "lost_body_other": "Sua sequência de {{count}} dias terminou. Acontece. Bora começar outra?",
     "practice_now": "Praticar agora"
+  },
+  "explain": {
+    "label": "Explicação",
+    "got_it": "Entendi",
+    "xp": "XP mede esforço e só sobe: {{correct}} por acerto, um bônus nas questões mais difíceis e {{finish}} por sessão concluída. A cada {{level}} XP você sobe de nível.",
+    "rating": "Rating é o seu nível em cada matéria. Todo mundo começa em {{start}}; ele sobe quando você acerta, desce quando erra e define a dificuldade das próximas questões.",
+    "streak": "Sequência são os dias seguidos com prática. Uma sessão concluída no dia já conta, mesmo sem bater a meta.",
+    "topics": "A porcentagem é quanto você acerta no tópico. Com {{percent}}% de acerto em pelo menos {{answers}} respostas, ele fica dominado.",
+    "subject": "Estudando outra matéria? É só trocar por aqui.",
+    "xp_label": "O que é XP?",
+    "topics_label": "Como os tópicos funcionam?"
   },
   "subjects": {
     "title": "Matérias",

@@ -220,3 +220,17 @@ describe("profile: rules", () => {
     ).toBe(0);
   });
 });
+
+describe("profile: what XP is", () => {
+  it("explains XP from the level bar", async () => {
+    const { user } = renderApp("/profile");
+
+    await user.click(
+      await screen.findByRole("button", { name: "O que é XP?" }),
+    );
+
+    expect(
+      screen.getByRole("dialog", { name: "Explicação" }),
+    ).toHaveTextContent("XP mede esforço e só sobe");
+  });
+});

@@ -84,6 +84,13 @@ export const config: Config = {
   session_length: 10,
   daily_goal_options: [10, 20, 30],
   xp_per_level: 500,
+  rules: {
+    xp_correct: 10,
+    xp_session_finished: 10,
+    user_rating_start: 1000,
+    mastery_mastered_from: 0.85,
+    mastery_mastered_min_answers: 10,
+  },
   plans: [],
   entitlements: {
     plan_key: null,

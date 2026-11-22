@@ -527,6 +527,7 @@ export interface components {
             google_sign_in: boolean;
             /** Plans */
             plans: components["schemas"]["PlanModel"][];
+            rules: components["schemas"]["RulesModel"];
             /** Session Length */
             session_length: number;
             /** Xp Per Level */
@@ -813,6 +814,23 @@ export interface components {
              * Format: uuid
              */
             id: string;
+        };
+        /**
+         * RulesModel
+         * @description The numbers the app quotes when it explains XP, rating and mastery
+         *     to a student. They are the settings of the same names.
+         */
+        RulesModel: {
+            /** Mastery Mastered From */
+            mastery_mastered_from: number;
+            /** Mastery Mastered Min Answers */
+            mastery_mastered_min_answers: number;
+            /** User Rating Start */
+            user_rating_start: number;
+            /** Xp Correct */
+            xp_correct: number;
+            /** Xp Session Finished */
+            xp_session_finished: number;
         };
         /** SessionCreate */
         SessionCreate: {

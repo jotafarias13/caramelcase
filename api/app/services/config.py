@@ -15,7 +15,12 @@ from app.domain.entitlements import (
 )
 from app.enums import FlagKey, PlanKey
 from app.providers.google import google_provider_for
-from app.schemas.config import ConfigResponse, EntitlementsModel, PlanModel
+from app.schemas.config import (
+    ConfigResponse,
+    EntitlementsModel,
+    PlanModel,
+    RulesModel,
+)
 from app.services.flags import flags_for
 from app.settings import PlanLimits, Settings
 
@@ -83,4 +88,13 @@ async def config_response(
         session_length=settings.session_length,
         daily_goal_options=list(settings.daily_goal_options),
         xp_per_level=settings.xp_per_level,
+        rules=RulesModel(
+            xp_correct=settings.xp_correct,
+            xp_session_finished=settings.xp_session_finished,
+            user_rating_start=settings.user_rating_start,
+            mastery_mastered_from=settings.mastery_mastered_from,
+            mastery_mastered_min_answers=(
+                settings.mastery_mastered_min_answers
+            ),
+        ),
     )

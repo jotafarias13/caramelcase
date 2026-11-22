@@ -2,6 +2,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { test, type Browser } from "@playwright/test";
+import { HINTS } from "../src/lib/hints";
 import { world } from "../src/test/fixtures";
 import { createMockApi, NetworkFailure } from "../src/test/mock-api";
 import type { Scene } from "./scene";
@@ -67,6 +68,8 @@ async function shootApp(
     {
       "caramelcase.theme": theme,
       "caramelcase.locale": locale,
+      // The one-time hints have all been shown: the mockups have none.
+      "caramelcase.hints": JSON.stringify(HINTS),
       ...scene.storage,
     },
   );

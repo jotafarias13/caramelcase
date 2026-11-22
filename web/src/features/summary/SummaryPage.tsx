@@ -79,7 +79,7 @@ function Summary({ session, summary, me }: SummaryProps) {
       </div>
 
       <Hero summary={summary} />
-      <StatCards summary={summary} />
+      <StatCards summary={summary} hints={!offerSave} />
 
       {loss && (
         <div className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2.5 text-[13px] leading-[18px] text-fg-muted">

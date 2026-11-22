@@ -145,7 +145,9 @@ describe("home: topics", () => {
     renderApp("/home");
 
     const topics = await screen.findByRole("region", { name: "Tópicos" });
-    const rows = within(topics).getAllByRole("button");
+    // The first button explains the list; the others are the topics.
+    const [explain, ...rows] = within(topics).getAllByRole("button");
+    expect(explain).toHaveAccessibleName("Como os tópicos funcionam?");
     expect(rows).toHaveLength(subjectDetail.topics.length);
     expect(rows[0]).toHaveTextContent("Pilhas e filasDominado");
     expect(rows[1]).toHaveTextContent("Listas ligadasEm andamento40%");
@@ -326,7 +328,9 @@ describe("home: subject switcher", () => {
       current_subject: "banco-de-dados",
     });
     await waitFor(() =>
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      expect(
+        screen.queryByRole("dialog", { name: "Trocar matéria" }),
+      ).not.toBeInTheDocument(),
     );
   });
 
@@ -338,5 +342,104 @@ describe("home: subject switcher", () => {
         name: "Switch subject. Current: Data Structures",
       }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("home: what the numbers mean", () => {
+  const hint = () => screen.queryByRole("dialog", { name: "Explicação" });
+  const gotIt = () => screen.getByRole("button", { name: "Entendi" });
+
+  it("names the two numbers at the top and says topics are mixed", async () => {
+    renderApp("/home");
+
+    const streak = (
+      await screen.findAllByRole("button", { name: "Sequência: 7" })
+    )[0];
+    expect(streak).toHaveTextContent("sequência7");
+    expect(
+      screen.getAllByRole("button", { name: "Rating: 1240" })[0],
+    ).toHaveTextContent("rating1240");
+    expect(
+      screen.getByText("Cada sessão mistura os tópicos da matéria."),
+    ).toBeInTheDocument();
+  });
+
+  it("explains a number when it is tapped, with the API's numbers", async () => {
+    localStorage.setItem(
+      "caramelcase.hints",
+      JSON.stringify(["streak", "topics", "subject"]),
+    );
+    const { user } = renderApp("/home");
+
+    await user.click(
+      (await screen.findAllByRole("button", { name: "Rating: 1240" }))[0],
+    );
+    expect(hint()).toHaveTextContent("Todo mundo começa em 1000");
+
+    await user.click(gotIt());
+    expect(hint()).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Como os tópicos funcionam?" }),
+    );
+    expect(hint()).toHaveTextContent(
+      "Com 85% de acerto em pelo menos 10 respostas, ele fica dominado.",
+    );
+  });
+
+  it("shows each hint once, one at a time, and never again", async () => {
+    const { user, unmount } = renderApp("/home");
+
+    await screen.findByRole("heading", { name: "E aí, Carol!" });
+    await waitFor(() =>
+      expect(hint()).toHaveTextContent("Sequência são os dias seguidos"),
+    );
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+
+    await user.click(gotIt());
+    expect(hint()).toHaveTextContent("A porcentagem é quanto você acerta");
+    await user.click(gotIt());
+    expect(hint()).toHaveTextContent("Estudando outra matéria?");
+    await user.click(gotIt());
+    expect(hint()).not.toBeInTheDocument();
+
+    // The same device, another visit.
+    unmount();
+    renderApp("/home");
+    await screen.findByRole("heading", { name: "E aí, Carol!" });
+    expect(hint()).not.toBeInTheDocument();
+  });
+
+  it("keeps the next hint for another visit when the student moves on", async () => {
+    const { user, unmount } = renderApp("/home");
+    await waitFor(() =>
+      expect(hint()).toHaveTextContent("Sequência são os dias seguidos"),
+    );
+
+    // A tap elsewhere closes the hint and no other takes its place.
+    await user.click(screen.getByRole("heading", { name: "E aí, Carol!" }));
+    expect(hint()).not.toBeInTheDocument();
+
+    unmount();
+    renderApp("/home");
+    await waitFor(() =>
+      expect(hint()).toHaveTextContent("A porcentagem é quanto você acerta"),
+    );
+  });
+
+  it("tells a student who has not played yet only where to switch subject", async () => {
+    renderApp("/home", {
+      routes: {
+        "GET /me/stats": {
+          ...stats,
+          sessions_finished: 0,
+          streak: { current: 0, longest: 0, status: "none", lost_length: null },
+        },
+      },
+    });
+
+    await waitFor(() =>
+      expect(hint()).toHaveTextContent("Estudando outra matéria?"),
+    );
   });
 });

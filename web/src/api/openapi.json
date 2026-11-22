@@ -206,6 +206,9 @@
             "title": "Plans",
             "type": "array"
           },
+          "rules": {
+            "$ref": "#/components/schemas/RulesModel"
+          },
           "session_length": {
             "title": "Session Length",
             "type": "integer"
@@ -222,7 +225,8 @@
           "google_sign_in",
           "session_length",
           "daily_goal_options",
-          "xp_per_level"
+          "xp_per_level",
+          "rules"
         ],
         "title": "ConfigResponse",
         "type": "object"
@@ -954,6 +958,40 @@
           "created_at"
         ],
         "title": "ReportResponse",
+        "type": "object"
+      },
+      "RulesModel": {
+        "description": "The numbers the app quotes when it explains XP, rating and mastery\nto a student. They are the settings of the same names.",
+        "properties": {
+          "mastery_mastered_from": {
+            "title": "Mastery Mastered From",
+            "type": "number"
+          },
+          "mastery_mastered_min_answers": {
+            "title": "Mastery Mastered Min Answers",
+            "type": "integer"
+          },
+          "user_rating_start": {
+            "title": "User Rating Start",
+            "type": "number"
+          },
+          "xp_correct": {
+            "title": "Xp Correct",
+            "type": "integer"
+          },
+          "xp_session_finished": {
+            "title": "Xp Session Finished",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "xp_correct",
+          "xp_session_finished",
+          "user_rating_start",
+          "mastery_mastered_from",
+          "mastery_mastered_min_answers"
+        ],
+        "title": "RulesModel",
         "type": "object"
       },
       "SessionCreate": {

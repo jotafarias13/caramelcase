@@ -2,7 +2,7 @@
 
 The build order for `docs/initial-spec.md`, as a checklist. Work top to bottom: the next task is the first unticked box. A milestone is done when every box under it is ticked, lint, type checks and tests pass, and it is committed.
 
-Status on 2026-11-22: milestones 1 to 8 done. Milestone 4 closed on 2026-11-22: all 50 topics of the three launch subjects are in the bank, 1266 questions. Next: milestone 9, V2 behind flags.
+Status on 2026-11-22: milestones 1 to 8 and 8.5 done. Milestone 4 closed on 2026-11-22: all 50 topics of the three launch subjects are in the bank, 1266 questions. Milestone 8.5 was added on 2026-11-22 at the owner's request. Next: milestone 9, V2 behind flags.
 
 ## Decisions
 
@@ -121,6 +121,18 @@ What milestone 8 builds on: the API trusts `X-Real-IP` for the rate limit per ad
 
 What milestone 9 builds on: a new flagged route needs nothing in nginx, since everything under `/api/` is proxied. A migration must let the previous API image run on the new schema, because a rollback puts back images but not the schema. Anything the API should read in production is a setting, set in `deploy/.env`. The `reminders` feature's `send-reminders` command will need a cron line on the server, like `deploy/backup_cron`, running `docker compose run --rm --no-deps api python -m app.cli send-reminders`. Before Better Stack or Plausible is switched on, the privacy policy must name it.
 
+### 8.5. Guidance: what the numbers mean
+
+Not in the spec: the owner asked for it on 2026-11-22, after finding XP, the streak, the rating and the topic list hard to read on a first visit. It is numbered 8.5 so that the numbers of the later milestones, which `docs/DECISIONS.md` refers to, stay as they are. A guided tour was considered and left out; the reasons and every choice are under "Milestone 8.5" in `docs/DECISIONS.md`. The design has no mockup or copy for any of this.
+
+- [x] The screen says what it shows: the streak and rating chips carry their names, and Home says that a session mixes the subject's topics. (Tapping a topic still starts a session of the subject, as agreed in milestone 1.)
+- [x] A tap on a number explains it, at any time: the two chips, the three cards of the summary, an info button beside "Tópicos" on Home and one beside the level on the profile. (`<Explain>`, in `web/src/components/Explain.tsx`.)
+- [x] Five one-time hints, the same explanations opened once without being asked: XP and then the rating on a summary, and on Home the streak, the topics and the subject switcher. One at a time, never over a dialog, never blocking the screen, and remembered on the device. (`web/src/lib/hints.ts`.)
+- [x] The numbers in the explanations come from `api/app/settings.py` through `GET /config` (`rules`), not from the copy.
+- [x] Both languages; unit tests for the hint rules, component tests for each screen, and the Playwright test sees each hint once and not again. (226 web tests, 556 API tests; the Playwright test passes in both languages.)
+
+What milestone 9 builds on: lives, streak freezes, leagues and achievements will each need a sentence of their own. A new explanation is an id in `HINTS` (`web/src/lib/hints.ts`), a text under `explain` in both translation files and a case in `useExplanation`; `web/README.md` has the steps. A number an explanation quotes goes into `rules` of `GET /config`.
+
 ### 9. V2 behind flags
 
 For every feature: its routes return 404 with the flag off, it works locally with the flag on, its rules are pure functions with unit tests, and its screens match their `v2-*` mockups.
@@ -173,4 +185,5 @@ None of these block the build; each has a mock or placeholder.
 - Where a student types their name, if anywhere: only Google gives one (see "Open, not decided" under milestone 5 in `docs/DECISIONS.md`)
 - Web fonts: served by Google Fonts as the design's token file asks, or self-hosted so they work offline (see "Landing page, PWA" under milestone 6 in `docs/DECISIONS.md`)
 - A look at the screens no mockup covers: `/subjects`, `/auth/callback`, the subject switcher on Home, the streak moments on Home, a guest's Settings, a profile without a name
+- A look at milestone 8.5, which no mockup covers either: the names over the two chips, the explanations and their wording in both languages (`explain` in `web/src/i18n/`)
 - The design's open placeholders: `[Benefício do plano]`, `[ANUAL]`, `[RECOMPENSA]`, `[nome da prova]`, `[seu-dominio]`

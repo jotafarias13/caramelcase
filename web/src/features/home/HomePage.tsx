@@ -4,6 +4,7 @@ import { Link } from "react-router";
 import { errorKind } from "@/api/client";
 import { useMe, useStats, useSubject, useSubjects } from "@/api/queries";
 import type { Me, Stats, SubjectDetail } from "@/api/types";
+import { Explain, ExplainButton } from "@/components/Explain";
 import { RatingCard } from "@/components/RatingCard";
 import {
   EmptyState,
@@ -35,7 +36,7 @@ export default function HomePage() {
   const stats = useStats();
   const subject = useSubject(me.data?.current_subject);
   // Loaded now, so the subject switcher opens with its list ready.
-  useSubjects();
+  const subjects = useSubjects();
 
   if (subject.error && errorKind(subject.error) === "not_found") {
     return <SubjectGone />;
@@ -51,12 +52,25 @@ export default function HomePage() {
   }
   if (!me.data || !stats.data || !subject.data) return <LoadingState />;
 
-  return <Home me={me.data} stats={stats.data} subject={subject.data} />;
+  return (
+    <Home
+      me={me.data}
+      stats={stats.data}
+      subject={subject.data}
+      // Nothing to switch to with a single subject.
+      canSwitch={(subjects.data?.subjects.length ?? 0) > 1}
+    />
+  );
 }
 
-type HomeProps = { me: Me; stats: Stats; subject: SubjectDetail };
+type HomeProps = {
+  me: Me;
+  stats: Stats;
+  subject: SubjectDetail;
+  canSwitch: boolean;
+};
 
-function Home({ me, stats, subject }: HomeProps) {
+function Home({ me, stats, subject, canSwitch }: HomeProps) {
   const { t } = useTranslation();
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const practice = useStartPractice(() => setSwitcherOpen(true));
@@ -68,6 +82,8 @@ function Home({ me, stats, subject }: HomeProps) {
     (topic) => topic.slug === subject.next_topic,
   );
   const change = stats.last_rating_change;
+  // Mastery says little before the first session.
+  const practiced = stats.sessions_finished > 0;
 
   return (
     <>
@@ -77,14 +93,16 @@ function Home({ me, stats, subject }: HomeProps) {
         <h1 className="text-[22px] leading-7 font-bold tracking-[-0.01em] text-balance lg:text-[30px] lg:leading-9">
           {name ? t("home.greeting", { name }) : t("home.greeting_no_name")}
         </h1>
-        <UserChips className="lg:hidden" />
-        <div className="col-span-2 pr-[3px] lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:pr-0">
-          <SubjectSwitcher
-            current={subject}
-            open={switcherOpen}
-            onOpenChange={setSwitcherOpen}
-          />
-        </div>
+        <UserChips shownOn="phone" className="lg:hidden" />
+        <Explain topic="subject" as="anchor" hint={canSwitch}>
+          <div className="col-span-2 pr-[3px] lg:col-span-1 lg:col-start-2 lg:row-start-1 lg:pr-0">
+            <SubjectSwitcher
+              current={subject}
+              open={switcherOpen}
+              onOpenChange={setSwitcherOpen}
+            />
+          </div>
+        </Explain>
       </div>
 
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-8">
@@ -132,12 +150,29 @@ function Home({ me, stats, subject }: HomeProps) {
           aria-labelledby="home-topics"
           className="flex flex-col gap-1.5 lg:col-start-1 lg:row-start-1 lg:gap-3 lg:rounded-card lg:border lg:border-border lg:bg-surface lg:p-5"
         >
-          <h2
-            id="home-topics"
-            className="text-[18px] leading-6 font-bold text-fg"
-          >
-            {t("home.topics")}
-          </h2>
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-center gap-2">
+              <h2
+                id="home-topics"
+                className="text-[18px] leading-6 font-bold text-fg"
+              >
+                {t("home.topics")}
+              </h2>
+              {subject.topics.length > 0 && (
+                <ExplainButton
+                  topic="topics"
+                  label={t("explain.topics_label")}
+                  hint={practiced}
+                />
+              )}
+            </div>
+            {subject.topics.length > 0 && (
+              // Sessions are per subject in V1, whichever topic is tapped.
+              <p className="text-[13px] leading-[18px] text-fg-muted">
+                {t("home.topics_note")}
+              </p>
+            )}
+          </div>
           {subject.topics.length === 0 ? (
             <EmptyState
               title={t("home.no_topics_title")}

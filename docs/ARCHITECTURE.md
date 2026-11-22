@@ -113,7 +113,7 @@ Inside the API a request passes through, in order:
 | `src/components/` | Shared components (`AnswerOption`, `CodeBlock`, `TopicNode`, `StreakCard`, `StateScreen` and others); `ui/` holds the primitives of `design/README.md` |
 | `src/api/` | `client.ts` (the typed fetch client and `ApiError`), `queries.ts` (every API call as a TanStack Query hook), `types.ts`; `openapi.json` and `schema.d.ts` are written by `make types` and committed |
 | `src/i18n/` | `pt-BR.json`, `en.json` and the setup. All interface text is here |
-| `src/lib/` | Theme, language and timezone preferences, flags, the syntax highlighter, product events, `cn()`, and `monitoring.ts`: Better Stack error tracking (through the Sentry SDK) and Plausible, built in only when their keys are set at build time |
+| `src/lib/` | Theme, language and timezone preferences, flags, the syntax highlighter, product events, the one-time hints (`hints.ts`, kept on the device), `cn()`, and `monitoring.ts`: Better Stack error tracking (through the Sentry SDK) and Plausible, built in only when their keys are set at build time |
 | `src/test/` | Sample API data (`fixtures.ts`), the mock API and the render helpers of the component tests |
 | `src/prerender.tsx` | Build-time entry that renders the landing page to HTML |
 | `src/styles/index.css` | Tailwind entry and base rules. No token is defined here |
@@ -254,7 +254,7 @@ What one answer writes, all in one transaction (`services/practice.answer_questi
 A flag is a row of `feature_flags` with a state: `off`, `staff` or `on`. Every key is in `FlagKey` (`app/enums.py`); seeding creates each one off, and a flag without a row is off.
 
 - **Routes.** A flagged route has `dependencies=[Depends(require_flag(FlagKey.X))]`. While the flag is off for whoever asks, it answers the same 404 as a route that does not exist. `staff` opens it to users with the staff role.
-- **The web app.** `GET /config` returns each flag as a boolean for the user who asks, with the plans and the user's entitlements.
+- **The web app.** `GET /config` returns each flag as a boolean for the user who asks, with the plans and the user's entitlements. It also carries `rules`, the settings the app quotes when it explains XP, the rating and topic mastery to a student.
 - **V1 has no flagged route.** The mechanism is tested with a route the test adds; milestone 9 is its first real use.
 
 Switching a flag has no command yet (the admin console is milestone 9): `UPDATE feature_flags SET state = 'on' WHERE key = '<key>';`.

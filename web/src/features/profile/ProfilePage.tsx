@@ -9,6 +9,7 @@ import {
   FailureScreen,
   LoadingState,
 } from "@/components/StateScreen";
+import { ExplainButton } from "@/components/Explain";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { RatingChip } from "@/components/ui/chips";
@@ -102,6 +103,7 @@ function Profile({ me, stats, subject, activity }: ProfileProps) {
           })}
           value={level.xp_in_level}
           max={level.xp_per_level}
+          info={<ExplainButton topic="xp" label={t("explain.xp_label")} />}
           className="w-full max-w-80 lg:w-80"
         />
       </div>

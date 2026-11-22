@@ -344,7 +344,9 @@ describe("summary: the prompt to save progress", () => {
     await user.click(await screen.findByRole("button", { name: "Agora não" }));
 
     await waitFor(() =>
-      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+      expect(
+        screen.queryByRole("dialog", { name: "Quer salvar esse progresso?" }),
+      ).not.toBeInTheDocument(),
     );
     expect(
       screen.getByRole("heading", { name: "Sessão concluída!" }),
@@ -370,5 +372,52 @@ describe("summary: the prompt to save progress", () => {
 
     await screen.findByRole("heading", { name: "Sessão concluída!" });
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+describe("summary: what the numbers mean", () => {
+  const hint = () => screen.queryByRole("dialog", { name: "Explicação" });
+
+  it("explains XP and then the rating, once", async () => {
+    const { user } = renderSummary();
+
+    await waitFor(() =>
+      expect(hint()).toHaveTextContent(
+        "XP mede esforço e só sobe: 10 por acerto, um bônus nas questões mais difíceis e 10 por sessão concluída. A cada 500 XP você sobe de nível.",
+      ),
+    );
+    await user.click(screen.getByRole("button", { name: "Entendi" }));
+    expect(hint()).toHaveTextContent("Rating é o seu nível em cada matéria.");
+    await user.click(screen.getByRole("button", { name: "Entendi" }));
+    expect(hint()).not.toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem("caramelcase.hints") ?? "")).toEqual(
+      ["xp", "rating"],
+    );
+  });
+
+  it("explains the streak when its card is tapped", async () => {
+    localStorage.setItem("caramelcase.hints", JSON.stringify(["xp", "rating"]));
+    const { user } = renderSummary();
+
+    await user.click(await screen.findByRole("button", { name: /sequência/ }));
+
+    expect(hint()).toHaveTextContent(
+      "Uma sessão concluída no dia já conta, mesmo sem bater a meta.",
+    );
+  });
+
+  it("waits for the prompt to save progress to close", async () => {
+    const { user } = renderSummary({
+      routes: {
+        "GET /me": guest,
+        "GET /sessions/:id": finishedWith({ sessions_finished: 1 }),
+      },
+    });
+
+    await screen.findByRole("dialog", { name: "Quer salvar esse progresso?" });
+    expect(hint()).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Agora não" }));
+    await waitFor(() => expect(hint()).toHaveTextContent("XP mede esforço"));
   });
 });

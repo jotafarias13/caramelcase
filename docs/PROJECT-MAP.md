@@ -69,7 +69,8 @@ web/
     api/                typed API client, every call as a TanStack Query hook (queries.ts),
                         generated types (schema.d.ts, openapi.json: make types)
     i18n/               pt-BR.json and en.json: all interface text
-    lib/                theme, language, flags, syntax highlighter, monitoring
+    lib/                theme, language, flags, syntax highlighter, monitoring,
+                        one-time hints
     test/               mock API and sample data for the component tests
   e2e/                  the Playwright test: a guest plays a whole session
   shots/                screenshots of the app beside the design's mockups (npm run shots)

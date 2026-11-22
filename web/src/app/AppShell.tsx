@@ -66,7 +66,7 @@ function Sidebar() {
         <SidebarItem {...profile} />
       </div>
       <div className="grow" />
-      <UserChips className="px-2" />
+      <UserChips shownOn="desktop" className="px-2" />
       <div className="h-px bg-border" />
       <SidebarItem {...settings} />
     </nav>

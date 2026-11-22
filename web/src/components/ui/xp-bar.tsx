@@ -13,6 +13,8 @@ type XpBarProps = {
   gained?: number;
   /** A chip after the label: "+12 XP", or "Nível 5" on a level up. */
   badge?: ReactNode;
+  /** A button after the label that explains XP. */
+  info?: ReactNode;
   /** What a screen reader calls the bar ("XP do nível"); the label by default. */
   barLabel?: string;
   className?: string;
@@ -27,6 +29,7 @@ export function XpBar({
   max,
   gained = 0,
   badge,
+  info,
   barLabel,
   className,
 }: XpBarProps) {
@@ -43,6 +46,7 @@ export function XpBar({
             {label}
           </span>
           {badge}
+          {info}
         </div>
         <span className="font-mono text-[12px] leading-[18px] text-fg-muted tabular-nums">
           {count}

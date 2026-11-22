@@ -445,6 +445,14 @@ async def test_config_for_a_visitor_has_every_flag_off_and_no_limits(
     assert config["session_length"] == 10
     assert config["daily_goal_options"] == [10, 20, 30]
     assert config["xp_per_level"] == 500
+    # The numbers the app quotes when it explains XP, rating and mastery.
+    assert config["rules"] == {
+        "xp_correct": 10,
+        "xp_session_finished": 10,
+        "user_rating_start": 1000,
+        "mastery_mastered_from": 0.85,
+        "mastery_mastered_min_answers": 10,
+    }
 
 
 async def test_config_shows_a_flag_as_it_is_for_whoever_asks(

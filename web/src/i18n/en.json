@@ -179,6 +179,7 @@
     "goal_met": "Today's goal met",
     "next_topic": "Next: {{topic}}",
     "topics": "Topics",
+    "topics_note": "Each session mixes this subject's topics.",
     "topic_mastered": "Mastered",
     "topic_in_progress": "In progress",
     "topic_available": "Start",
@@ -210,6 +211,17 @@
     "lost_body_one": "Your {{count}}-day streak ended. It happens. Start a new one?",
     "lost_body_other": "Your {{count}}-day streak ended. It happens. Start a new one?",
     "practice_now": "Practice now"
+  },
+  "explain": {
+    "label": "Explanation",
+    "got_it": "Got it",
+    "xp": "XP measures effort and only goes up: {{correct}} per correct answer, a bonus on harder questions and {{finish}} for finishing a session. Every {{level}} XP is a new level.",
+    "rating": "Rating is your level in each subject. Everyone starts at {{start}}; it goes up when you're right, down when you're wrong, and sets how hard your next questions are.",
+    "streak": "Your streak is the days in a row you've practiced. One finished session a day counts, even if you miss your goal.",
+    "topics": "The percentage is how often you get a topic right. At {{percent}}% correct over at least {{answers}} answers, it's mastered.",
+    "subject": "Studying another subject? Switch it here.",
+    "xp_label": "What is XP?",
+    "topics_label": "How do topics work?"
   },
   "subjects": {
     "title": "Subjects",

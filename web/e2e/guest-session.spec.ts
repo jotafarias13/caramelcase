@@ -6,7 +6,7 @@ import ptBR from "../src/i18n/pt-BR.json" with { type: "json" };
  * The spec's end-to-end path, in each project's language, with every
  * feature flag off: a guest opens the landing page, goes through
  * onboarding, finishes a session and sees the summary, then opens Home,
- * Profile and Settings.
+ * Profile and Settings. On the way, each number is explained once.
  *
  * It runs against the real API and database, so it does not know the
  * correct keys: it takes the first option every time. Texts come from the
@@ -29,6 +29,12 @@ test("a guest opens the landing page, finishes a session and sees the summary", 
   // V1 is the app with every flag off.
   const config = await (await request.get("/api/v1/config")).json();
   expect(Object.values(config.flags)).not.toContain(true);
+
+  // A one-time hint, and the button that closes it and lets the next show.
+  const hint = page.getByRole("dialog", { name: copy.explain.label });
+  const gotIt = page.getByRole("button", { name: copy.explain.got_it });
+  /** The start of an explanation, up to its first number. */
+  const start = (text: string) => text.split("{{")[0];
 
   await test.step("the landing page", async () => {
     await page.goto("/");
@@ -91,6 +97,12 @@ test("a guest opens the landing page, finishes a session and sees the summary", 
     await expect(
       page.getByText(copy.summary.correct_of.replace("{{total}}", "10")),
     ).toBeVisible();
+    // With the offer gone, XP and the rating are explained, one at a time.
+    for (const text of [copy.explain.xp, copy.explain.rating]) {
+      await expect(hint).toContainText(start(text));
+      await gotIt.click();
+    }
+    await expect(hint).toHaveCount(0);
   });
 
   await test.step("Home, Profile and Settings", async () => {
@@ -102,6 +114,16 @@ test("a guest opens the landing page, finishes a session and sees the summary", 
         name: copy.home.greeting_no_name,
       }),
     ).toBeVisible();
+    await expect(page.getByText(copy.home.topics_note)).toBeVisible();
+    for (const text of [
+      copy.explain.streak,
+      copy.explain.topics,
+      copy.explain.subject,
+    ]) {
+      await expect(hint).toContainText(start(text));
+      await gotIt.click();
+    }
+    await expect(hint).toHaveCount(0);
 
     const nav = page.getByRole("navigation", { name: copy.nav.main });
     await nav.getByRole("link", { name: copy.nav.profile }).click();
@@ -116,5 +138,10 @@ test("a guest opens the landing page, finishes a session and sees the summary", 
     ).toBeVisible();
     // The reminders flag is off: its switch is not there.
     await expect(page.getByText(copy.settings.daily_reminder)).toHaveCount(0);
+
+    // Back on Home, nothing is explained a second time.
+    await nav.getByRole("link", { name: copy.nav.home }).click();
+    await expect(page.getByText(copy.home.topics_note)).toBeVisible();
+    await expect(hint).toHaveCount(0);
   });
 });

@@ -629,3 +629,57 @@ On 2026-11-17, on an M4 with Docker Desktop 27.5, with both images built locally
 - **A root `README.md`, `docs/DEPLOY.md` and `docs/PROJECT-MAP.md`**: how to run the app and show it, what to set up before the first deploy, and a tour of the repository. `docs/DEPLOY.md` points at the runbook for every procedure rather than repeating it. Writing it showed that the runbook's first deploy needed the images published before the certificate step, not only before the deploy, since `certbot.sh` starts nginx from the web image; the runbook now says so.
 - **Error tracking is Better Stack, not Sentry**, at the owner's request: they already use Better Stack and know it. Better Stack accepts what the Sentry SDK sends (its docs give JavaScript SDK 7 and Python SDK 2 as the minimum, and say JavaScript SDK 11 is supported), so the code keeps `sentry-sdk` and `@sentry/browser`, the same settings and the same privacy filters, and only the DSN changes. The variables are named after the service: `SENTRY_DSN` is now `BETTER_STACK_ERRORS_DSN`, `VITE_SENTRY_DSN` is now `VITE_BETTER_STACK_ERRORS_DSN` (also the build workflow's secret), and the setting `sentry_traces_sample_rate` is now `better_stack_traces_sample_rate`, still 0. Any service that accepts the Sentry SDK, Sentry and GlitchTip included, still works with the same variables. Nothing has been sent to Better Stack yet: that needs an account and a DSN.
 - **Uptime monitoring and log collection are documented, not built.** `docs/RUNBOOK.md`, "Logs and monitoring", says how to do both with Better Stack: monitors on the health route and the home page, heartbeats from the backup and renewal cron jobs, and the containers' logs shipped by Better Stack's collector or by Vector. For this repository it recommends Vector as a container in the compose file, because then the setup is in git. Neither is in the code until the owner wants it, and log collection needs a line in the privacy policy first, since the logs hold IP addresses.
+
+
+## Milestone 8.5 · Guidance
+
+### Agreed with the owner on 2026-11-22
+
+- **No guided tour.** The owner asked about a tour of the kind that dims the screen and points at one thing after another, because XP, the streak, the rating and "how to use the courses" confused even them. What was built instead, with their agreement, has three parts: the screen names what it shows, a tap on a number explains it at any time, and the same explanation opens once by itself when the number first matters. A tour would explain the streak, the rating and XP while they read 0, 1000 and nothing, and would stand between a new student and the first question, which the landing page and onboarding are built to reach quickly. No tour library was added.
+- **Tapping a topic still starts a session of the whole subject**, as agreed in milestone 1. Home now says so ("Cada sessão mistura os tópicos da matéria."). Making a tap practise that one topic is a change of behaviour the owner may still want; it was offered and not chosen.
+- **The look is derived from the design's tokens and components**, since `design/` has no mockup and no copy for any of this. `design/` itself is unchanged.
+- **The milestone is numbered 8.5** and sits before milestone 9 in the plan, so that every reference to milestones 9 to 12 in this file still points at the right one.
+
+### What changed on the screens
+
+- **The streak and rating chips have their names on top** ("sequência", "rating", in the mono 11 px label the stat cards use), and each is a button. The mockups draw the two numbers with an icon and nothing else, and the words existed only for screen readers. On phones the greeting's row is 18 px taller for it.
+- **Home's topic list has a line under its heading** saying that sessions mix topics, and an info button beside the heading. Neither is shown for a subject without topics.
+- **The three cards of the summary are buttons.** Their labels are underlined with dots, which is the sign used here for "a tap explains this"; the cards are about 80 px wide inside on a phone, so there is no room for an icon.
+- **The profile's level bar has an info button** after "Nível 4", for XP. The summary's level bar has none: the XP card above it explains the same thing.
+- **An info button takes 16 px in the layout and 44 px under a finger**, by negative margins.
+- **The topic's percentage is not itself a button**, though that was the first idea: it sits inside the row, which is already a button that starts a session. The info button beside the heading explains it.
+- **Mel does not appear in the explanations.** A tooltip of 13 px text has no room for the sprite at a whole-number scale.
+
+### The explanation
+
+- **It is the "Tooltip" of `design/README.md`** (fill `--text`, text `--bg`, radius `tile`, 13/18, a 10 px arrow, at most 280 px wide), **plus an "Entendi" button**, on Radix Popover. The README says a tooltip opens on hover, focus and long-press; this one opens on a tap, because it must work on a phone and nothing may depend on hover.
+- **It never blocks the screen.** It is not modal: a tap anywhere else closes it and still does what it was meant to do, and Esc closes it.
+- **Five topics**: XP, rating, streak, topics, and the subject switcher. The last is a hint only, since the switcher is itself a button.
+- **The numbers come from the API's settings.** `GET /config` has a new field, `rules`, with `xp_correct`, `xp_session_finished`, `user_rating_start`, `mastery_mastered_from` and `mastery_mastered_min_answers`; the XP of a level was already there. The copy holds `{{variables}}`, so a changed setting changes the sentence. The bonus for a harder question is mentioned without its number, to keep the sentence short; `xp_harder_question_bonus` is not in `rules`.
+- **`UserChips` still holds its own 1000** for a subject without a rating, as before; the explanation's 1000 is the setting.
+
+### The one-time hints
+
+- **Where each shows:** XP and then the rating on a summary, on their cards; on Home the streak (on its chip: at the top on phones, in the sidebar from 1280 px), then the topics, then the subject switcher.
+- **When:** the summary's two wait until the prompt to save progress is closed. The streak and the topics wait for a first finished session, since both read as nothing before it. The switcher's needs a second published subject. So a new student who lands on Home before playing sees only the switcher's hint.
+- **One at a time.** "Entendi" lets the next hint of the screen show. Closing a hint any other way (a tap elsewhere, Esc) means the student is doing something else, and the next one waits until a screen with hints is opened again; otherwise a tap on "Mais uma" would flash the next hint while the session loads.
+- **A hint that opens by itself does not take the focus** and does not close when the focus moves.
+- **Shown hints are remembered on the device** (`localStorage`, `caramelcase.hints`), not on the account: no migration and no route. The cost is that a student sees them again on a new device or after clearing the browser. Signing out does not clear them.
+- **Students who were using the app before this milestone get the hints too**, on their next summary and visit to Home.
+- **Hints open only where they can be seen.** Both layouts' chips are in the page, one hidden by CSS, so `useIsDesktop()` (a media query at 1280 px) decides which one may open the streak's hint. It is the one place where JavaScript asks about the breakpoint.
+
+### Tests and tools
+
+- **jsdom gets a `ResizeObserver` that does nothing** (`web/src/test/setup.ts`): Radix's popover asks for one.
+- **`npm run shots` starts with every hint already shown**, so the comparisons show the screens and not a hint over them; a scene can set `caramelcase.hints` to show one. Home now differs from its mockup by about 20% of pixels on phones, because everything under the greeting moved down 18 px, and by 2% on desktop.
+- **The Playwright test closes each hint as it comes** and checks at the end that Home shows none a second time.
+
+### Copy written for this milestone
+
+In the voice of `design/copy.md`, in both languages, and the owner's to change in `web/src/i18n/`: the five explanations and their two buttons' labels under `explain`, "Entendi", and `home.topics_note`.
+
+### Open, not decided
+
+- **Whether a tap on a topic should practise that topic** (above).
+- **Hints repeat on a new device.** Moving them to the account is a column on `user_settings` and a field in `PATCH /me/settings`.
+- **V2 and V3 features have no explanations yet**: lives, streak freezes, leagues and achievements arrive with their own numbers. The plan's note under milestone 8.5 says how one is added.

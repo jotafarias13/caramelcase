@@ -39,6 +39,20 @@ class EntitlementsModel(BaseModel):
         )
 
 
+class RulesModel(BaseModel):
+    """The numbers the app quotes when it explains XP, rating and mastery
+    to a student. They are the settings of the same names.
+    """
+
+    xp_correct: int
+    xp_session_finished: int
+    user_rating_start: float
+    # A topic is mastered from this share of right answers (0 to 1) ...
+    mastery_mastered_from: float
+    # ... once it has at least this many answers.
+    mastery_mastered_min_answers: int
+
+
 class ConfigResponse(BaseModel):
     # Flag key -> is the feature on for whoever is asking.
     flags: dict[str, bool]
@@ -49,3 +63,4 @@ class ConfigResponse(BaseModel):
     session_length: int
     daily_goal_options: list[int]
     xp_per_level: int
+    rules: RulesModel
