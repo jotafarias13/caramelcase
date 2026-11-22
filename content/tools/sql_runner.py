@@ -8,6 +8,11 @@ line per row, the columns separated by "|" as in the sqlite3 shell, and
 NULL written as NULL, where the shell would print nothing. Foreign keys
 are enforced, as in the SQL the course teaches. An error stops the run
 with exit code 1.
+
+Each statement is its own transaction unless the code says BEGIN, as in
+the sqlite3 shell and in the databases the course teaches. Python's
+default would open a transaction before the first INSERT, so that a
+later BEGIN fails and a ROLLBACK undoes rows written before it.
 """
 
 import sqlite3
@@ -40,7 +45,7 @@ def cell(value: object) -> str:
 
 
 def main(sql_file: str) -> int:
-    connection = sqlite3.connect(":memory:")
+    connection = sqlite3.connect(":memory:", isolation_level=None)
     connection.execute("PRAGMA foreign_keys = ON")
     for statement in statements_of(Path(sql_file).read_text(encoding="utf-8")):
         try:
@@ -51,7 +56,6 @@ def main(sql_file: str) -> int:
         if cursor.description is not None:
             for row in cursor:
                 print("|".join(cell(value) for value in row))
-    connection.commit()
     return 0
 
 

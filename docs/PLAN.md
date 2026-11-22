@@ -2,7 +2,7 @@
 
 The build order for `docs/initial-spec.md`, as a checklist. Work top to bottom: the next task is the first unticked box. A milestone is done when every box under it is ticked, lint, type checks and tests pass, and it is committed.
 
-Status on 2026-11-17: milestones 1 to 3 and 5 to 8 done. Milestone 4 is open but set aside: 34 of the 50 topics are in the bank (880 questions), imported as `verified`, and the owner decided that is enough to move on. Next: milestone 9, V2 behind flags. The other 16 topics of milestone 4 come later, when the owner says so, with subagents on Opus 5.5 at high effort (see milestone 4).
+Status on 2026-11-22: milestones 1 to 8 done. Milestone 4 closed on 2026-11-22: all 50 topics of the three launch subjects are in the bank, 1266 questions. Next: milestone 9, V2 behind flags.
 
 ## Decisions
 
@@ -56,13 +56,13 @@ The changes to the spec agreed with the owner, and the defaults chosen where spe
 
 Runs in subagents, in the background. The owner runs milestone 5 in a session of its own, not beside the content run. Per topic: one agent generates; the tools validate, run code and dedupe; a fresh agent that sees only the stripped file blind-solves; failures get one repair attempt, then are dropped. Waves of about six agents. `content/README.md` has the commands, step by step.
 
-The 16 topics still to write are the ones with no questions in `content/REPORT.md`: 7 in Estruturas de Dados, 7 in Banco de Dados and 2 in Introdução à Programação. `arvores-binarias` is already written and waits in `content/work/` for its blind solve. Run them with one orchestrator agent per subject, so that the main session hears from each subject once and not four times per topic, and with at most three generators at a time. Every agent, the orchestrators included, is launched with model `opus` and effort `high`: the owner decided that. `content/work/fanout/brief.md` is the orchestrator's brief, with the task messages for generators, solvers and repairs, and `content/work/fanout/pipe.py` is the driver it calls. Both are local files, outside git. A topic costs about 260k tokens.
+The last 16 topics were written on 2026-11-22 (7 in Estruturas de Dados, 7 in Banco de Dados and 2 in Introdução à Programação), in under an hour. How a run of many topics goes, for milestone 11: one orchestrator agent per subject, so that the main session hears from each subject once and not four times per topic, and at most three generators at a time. Every agent, the orchestrators included, is launched with model `opus` and effort `high`: the owner decided that. `content/work/fanout/brief.md` is the orchestrator's brief, with the task messages for generators, solvers and repairs, and `content/work/fanout/pipe.py` is the driver it calls. Both are local files, outside git, and the brief holds the absolute path of the checkout it runs in. A topic costs about 260k tokens.
 
 - [x] Pilot: one topic per launch subject through the full pipeline, with `content/REPORT.md` and samples shown to the owner. (`ponteiros` 32, `filas-e-deques` 22 and `sql-juncoes` 24: all 78 passed in the first round and are in `content/bank/`. What the pilot changed, and what it left open for the owner, is under "Milestone 4" in `docs/DECISIONS.md`.)
 - [x] **Stop: the owner approves the pilot before the fan-out.** (Approved on 2026-11-17, with the decisions under "Milestone 4" in `docs/DECISIONS.md`.)
-- [ ] About 400 questions per launch subject pass validation, blind solve, code runs and dedupe. (Per topic, as in the pilot: 32 in Introdução à Programação, 22 in Estruturas de Dados, 24 in Banco de Dados. On 2026-11-17: 352, 264 and 264, with 16 topics still to write.)
-- [ ] Each topic's difficulty spread is near 25% level 1–2, 50% level 3, 25% level 4–5. (It holds for the 34 topics written; the box waits for the other 16.)
-- [x] Every question is imported as `verified`. (880 questions on 2026-11-17, in the local database; run `make import-content` again after more topics.)
+- [x] About 400 questions per launch subject pass validation, blind solve, code runs and dedupe. (Per topic, as in the pilot: 32 in Introdução à Programação, 22 in Estruturas de Dados, 24 in Banco de Dados. On 2026-11-22: 416, 418 and 432, in 13, 19 and 18 topics. No question failed a step, so none was repaired or dropped.)
+- [x] Each topic's difficulty spread is near 25% level 1–2, 50% level 3, 25% level 4–5. (All 50 topics: 25, 50 and 25% wherever the topic's size divides that way, and 27, 50 and 23% for the 22 questions of an Estruturas de Dados topic.)
+- [x] Every question is imported as `verified`. (880 questions on 2026-11-17, in the local database. The 1266 of 2026-11-22 were imported into an empty scratch database, all as `verified`; the local database gets them with `make import-content`, run from `main` once the branch `feat/milestone-4` is merged, and `make publish` then puts them in front of students.)
 - [x] `content/REPORT.md` gives counts per subject, topic and difficulty, and the failure rate at each step.
 
 ### 5. V1 backend

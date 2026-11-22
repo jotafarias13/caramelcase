@@ -4,7 +4,7 @@ Five-minute practice sessions for computer science students, in the style of Duo
 
 A React single-page app (`web/`) on a FastAPI and Postgres backend (`api/`), with the question bank as files in `content/`. Everything runs locally with Docker; nothing needs an outside account.
 
-**Where it stands.** V1 is built, and so are the production files. The bank holds 880 checked questions in the three launch subjects: Introdução à Programação, Estruturas de Dados and Banco de Dados. V2 and V3 features (review queue, leagues, paid plans, AI tutor...) come next, behind feature flags that are off by default. `docs/PLAN.md` has the full status.
+**Where it stands.** V1 is built, and so are the production files. The bank holds 1266 checked questions in the three launch subjects: Introdução à Programação, Estruturas de Dados and Banco de Dados. V2 and V3 features (review queue, leagues, paid plans, AI tutor...) come next, behind feature flags that are off by default. `docs/PLAN.md` has the full status.
 
 ## Run it on your computer
 
