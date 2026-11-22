@@ -71,7 +71,7 @@ jobs:
           # secret is empty, which leaves the service off. The API's image
           # declares none of them.
           build-args: |
-            VITE_SENTRY_DSN=${{ secrets.VITE_SENTRY_DSN }}
+            VITE_BETTER_STACK_ERRORS_DSN=${{ secrets.VITE_BETTER_STACK_ERRORS_DSN }}
             VITE_PLAUSIBLE_DOMAIN=${{ secrets.VITE_PLAUSIBLE_DOMAIN }}
             VITE_PLAUSIBLE_SCRIPT=${{ secrets.VITE_PLAUSIBLE_SCRIPT }}
 

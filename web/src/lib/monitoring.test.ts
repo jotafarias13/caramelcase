@@ -24,7 +24,7 @@ afterEach(() => {
 
 describe("startMonitoring", () => {
   it("starts nothing without keys", async () => {
-    vi.stubEnv("VITE_SENTRY_DSN", "");
+    vi.stubEnv("VITE_BETTER_STACK_ERRORS_DSN", "");
     vi.stubEnv("VITE_PLAUSIBLE_DOMAIN", "");
 
     startMonitoring();
@@ -34,8 +34,11 @@ describe("startMonitoring", () => {
     expect(analyticsScripts()).toHaveLength(0);
   });
 
-  it("starts Sentry with its DSN and without personal data", async () => {
-    vi.stubEnv("VITE_SENTRY_DSN", "https://key@errors.example.com/1");
+  it("starts error tracking with its DSN and without personal data", async () => {
+    vi.stubEnv(
+      "VITE_BETTER_STACK_ERRORS_DSN",
+      "https://key@errors.example.com/1",
+    );
 
     startMonitoring();
     await vi.dynamicImportSettled();
@@ -77,7 +80,7 @@ describe("startMonitoring", () => {
   });
 });
 
-describe("what Sentry is sent", () => {
+describe("what error tracking is sent", () => {
   it("drops the query and fragment of an address", () => {
     expect(withoutQuery("https://a.com/auth/callback?token=secret#x")).toBe(
       "https://a.com/auth/callback",

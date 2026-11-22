@@ -84,11 +84,12 @@ class Settings(BaseSettings):
     gunicorn_timeout_seconds: int = 60
 
     # ---- error tracking ----
-    # A Sentry DSN (Sentry, or a compatible service such as GlitchTip).
+    # Better Stack's error tracking DSN, from the application's Ingest tab.
+    # It is read by the Sentry SDK, which Better Stack accepts.
     # Without one, no error leaves the server.
-    sentry_dsn: str | None = None
+    better_stack_errors_dsn: str | None = None
     # Share of requests traced for performance, from 0 to 1.
-    sentry_traces_sample_rate: float = 0.0
+    better_stack_traces_sample_rate: float = 0.0
 
     # ---- auth ----
     session_token_bytes: int = 32  # 256-bit opaque session tokens

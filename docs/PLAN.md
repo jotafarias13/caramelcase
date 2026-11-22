@@ -116,10 +116,10 @@ What milestone 8 builds on: the API trusts `X-Real-IP` for the rate limit per ad
 - [x] Migrations run as an explicit deploy step. (In `deploy/scripts/deploy.sh`, with the new API image, before it starts; never on the API's start.)
 - [x] `deploy/backup.sh` keeps 14 nightly `pg_dump` files; the restore procedure in `docs/RUNBOOK.md` was tried locally. (`deploy/restore.sh` is the procedure; tried on 2026-11-17.)
 - [x] Manual build-and-publish and deploy workflows modelled on the reference projects; `docs/RUNBOOK.md` names their secrets. (Not run yet: nothing has been pushed. `deploy.sh`, which the deploy workflow calls, was run against a local registry, rollback included.)
-- [x] Logs are structured JSON; error tracking and external analytics switch on only when their keys are set. (gunicorn's and uvicorn's lines too, and nginx's access log; Sentry for the API and the web app, Plausible for the web app.)
+- [x] Logs are structured JSON; error tracking and external analytics switch on only when their keys are set. (gunicorn's and uvicorn's lines too, and nginx's access log; Better Stack error tracking, through the Sentry SDK, for the API and the web app; Plausible for the web app.)
 - [x] The production stack boots locally with the http config. (The Playwright test passes against it in both languages: `docs/RUNBOOK.md`, "Trying the production stack on a laptop".)
 
-What milestone 9 builds on: a new flagged route needs nothing in nginx, since everything under `/api/` is proxied. A migration must let the previous API image run on the new schema, because a rollback puts back images but not the schema. Anything the API should read in production is a setting, set in `deploy/.env`. The `reminders` feature's `send-reminders` command will need a cron line on the server, like `deploy/backup_cron`, running `docker compose run --rm --no-deps api python -m app.cli send-reminders`. Before Sentry or Plausible is switched on, the privacy policy must name it.
+What milestone 9 builds on: a new flagged route needs nothing in nginx, since everything under `/api/` is proxied. A migration must let the previous API image run on the new schema, because a rollback puts back images but not the schema. Anything the API should read in production is a setting, set in `deploy/.env`. The `reminders` feature's `send-reminders` command will need a cron line on the server, like `deploy/backup_cron`, running `docker compose run --rm --no-deps api python -m app.cli send-reminders`. Before Better Stack or Plausible is switched on, the privacy policy must name it.
 
 ### 9. V2 behind flags
 
@@ -163,7 +163,8 @@ None of these block the build; each has a mock or placeholder.
 
 - Hosting choice (DigitalOcean or AWS) and the domain; then the server, the Docker Hub account and the workflows' secrets (`docs/RUNBOOK.md`, "Production")
 - Where backups are copied off the server, if anywhere (they are kept 14 days on its own disk)
-- Whether to switch on error tracking (Sentry) and analytics (Plausible); each needs its key and a line in the privacy policy
+- Whether to switch on error tracking (Better Stack) and analytics (Plausible); each needs its key and a line in the privacy policy
+- Whether to add Better Stack's uptime monitoring and log collection (`docs/RUNBOOK.md`, "Logs and monitoring"); log collection needs a line in the privacy policy too
 - Google OAuth client id and secret (redirect URI to register: `<domain>/api/v1/auth/google/callback`)
 - SMTP credentials for sign-in emails
 - A hand check of about 50 questions per launch subject before it is published

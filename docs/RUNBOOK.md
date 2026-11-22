@@ -212,7 +212,7 @@ GitHub, Settings, Secrets and variables, Actions. The names are those of the own
 | `VM_USER` | deploy | The user the workflow signs in as over SSH; it must be able to run `docker` |
 | `VM_SSH_PRIVATE_KEY` | deploy | The private key of that user's SSH key |
 | `PROJECT_ROOT` | deploy | Where the repository is cloned on the server, as in `deploy/.env` |
-| `VITE_SENTRY_DSN` | build, optional | Sentry for the web app (see "Logs and monitoring") |
+| `VITE_BETTER_STACK_ERRORS_DSN` | build, optional | Better Stack error tracking for the web app (see "Logs and monitoring") |
 | `VITE_PLAUSIBLE_DOMAIN` | build, optional | Plausible analytics: the site's domain as registered at Plausible |
 | `VITE_PLAUSIBLE_SCRIPT` | build, optional | Another Plausible script address (self-hosted Plausible, or the site's own script) |
 
@@ -271,10 +271,39 @@ make psql      # then \c scratch; drop it afterwards with dropdb
 ## Logs and monitoring
 
 - **Logs:** `make -C deploy logs`, or one service: `docker compose -f deploy/docker-compose.yml logs api`. The API writes one JSON object per line (`time` in UTC, `level`, `message`, then fields such as `request_id`, `path`, `status`, `duration_ms`, or `logger` for a line of gunicorn or a library). nginx writes one per request, with `request_id` set to the API's for `/api` requests, so `grep <request_id>` finds both lines. nginx's error log stays plain text. Docker keeps 5 files of 10 MB per container.
-- **Health:** `https://<DOMAIN>/api/v1/health` answers 200 when the API reaches the database. That is the address for an uptime monitor.
-- **Error tracking (Sentry, or GlitchTip):** for the API, `SENTRY_DSN` in `deploy/.env` and `make -C deploy up`; for the web app, the `VITE_SENTRY_DSN` secret and a new build. Without them nothing is sent. Neither sends cookies, request bodies or a user's identity, and the web app strips query strings, where a sign-in link carries its token.
+- **Health:** `https://<DOMAIN>/api/v1/health` answers 200 when the API reaches the database. That is the address for an uptime monitor ("Uptime monitoring with Better Stack", below).
+- **Error tracking (Better Stack):** for the API, `BETTER_STACK_ERRORS_DSN` in `deploy/.env` and `make -C deploy up`; for the web app, the `VITE_BETTER_STACK_ERRORS_DSN` secret and a new build. Without them nothing is sent. Each DSN comes from the Ingest tab of an application in Better Stack's error tracking, and looks like `https://<token>@<host>/<id>`; one application for the API and one for the web app keeps their errors apart. Better Stack accepts what the Sentry SDK sends, so the code uses `sentry-sdk` and `@sentry/browser` and only the DSN points at Better Stack. Neither sends cookies, request bodies or a user's identity, and the web app strips query strings, where a sign-in link carries its token.
 - **Analytics (Plausible):** the `VITE_PLAUSIBLE_DOMAIN` secret and a new build. Plausible sets no cookies. Without the secret the build has no script.
 - **Before switching on either:** add the service to the privacy policy's list of who receives data (`legal` in `web/src/i18n/`).
+
+### Uptime monitoring with Better Stack
+
+Not set up yet. It needs a Better Stack account and nothing in the repository.
+
+- **The app:** a monitor on `https://<DOMAIN>/api/v1/health`. A 200 means nginx, the API and the database all answer. nginx answers 502 `api_unavailable` when the API is down, and the API answers 503 `database_unavailable` when the database is, so either opens an incident. For a stricter check, make it a keyword monitor that expects `"database":"ok"` in the body.
+- **The site:** a second monitor on `https://<DOMAIN>/`, which nginx serves without the API. With both monitors you can tell "nginx is down" from "the API is down".
+- **The certificate:** Better Stack's monitors can warn before a certificate expires, which catches a renewal that has stopped working.
+- **The cron jobs:** a heartbeat for the backup and one for the certificate renewal. Each heartbeat is a URL (`https://uptime.betterstack.com/api/v1/heartbeat/<token>`) that expects a request on schedule, and opens an incident when none arrives. Ping it only when the job succeeds, by adding to the line in `deploy/backup_cron` or `deploy/certbot/renew_cron`:
+
+  ```sh
+  0 3 * * * root ${PROJECT_ROOT}/deploy/backup.sh >> /var/log/caramelcase-backup.log 2>&1 && curl -fsS -m 10 --retry 3 https://uptime.betterstack.com/api/v1/heartbeat/<token> > /dev/null
+  ```
+
+  The tidier way is a code change: an optional `BACKUP_HEARTBEAT_URL` in `deploy/.env` that `backup.sh` calls at the end, and `<url>/fail` when the dump fails, so the token stays out of the cron file. The same goes for `send-reminders` when the `reminders` cron line arrives in milestone 9.
+
+Uptime checks send no student's data, so the privacy policy needs no change for them.
+
+### Log collection with Better Stack
+
+Not set up yet. Today the logs stay on the server: Docker keeps 5 files of 10 MB per container, and losing the server loses them. Shipping them to Better Stack makes them searchable, kept for longer, and able to raise an alert. There are two ways, and both keep Docker's `json-file` driver, so `make -C deploy logs` still works:
+
+- **Better Stack's collector** (the `betterstack/collector` image): Better Stack's recommended way. It is installed on the server with one command from the source's page in Better Stack, and reads every container's logs. It also sends the host's metrics. This is the least work, but its setup lives on the server and not in git.
+- **Vector**, with Better Stack's HTTP sink and the source's token. Better Stack's Docker guide installs it on the host as a service, and the `vector` user must be in the `docker` group. To fit this repository better, run it as a container in `deploy/docker-compose.yml` instead, under a `logs` profile. It would mount `/var/run/docker.sock` read-only, with a `docker_logs` source and its configuration in `deploy/`, and take the token from `deploy/.env`. Then it lives in git and is deployed with the rest. This is the way to choose for this repository.
+
+What Better Stack would receive: the API's lines are already JSON, so their fields (`request_id`, `path`, `status`, `duration_ms`, `logger`) can be searched as they are. nginx's access lines are JSON too, and share `request_id` with the API's. Two things to do before switching it on:
+
+- **The privacy policy.** nginx's access log and the API's request log hold IP addresses, so the policy must name Better Stack among those who receive data, and say how long it keeps logs.
+- **The volume.** Drop the healthcheck's line every 30 seconds (2,880 a day) with a filter in Vector or in Better Stack, so it does not count against the plan.
 
 ## Feature flags and plans
 

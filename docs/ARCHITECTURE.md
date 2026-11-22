@@ -97,7 +97,7 @@ Inside the API a request passes through, in order:
 | `app/db/rows.py` | `ensure_row`: get-or-create with a row lock, for the one-row-per-user-and-something tables |
 | `app/cli.py` | Commands run by hand, make and cron: `seed`, `import-content`, `publish-subjects`, `demo-user`, `openapi` |
 | `app/logger.py` | JSON or readable log lines, the request log, and the standard `logging` module routed into the same sink |
-| `app/error_tracking.py` | Sentry, started only when `SENTRY_DSN` is set, without personal data or request bodies |
+| `app/error_tracking.py` | Better Stack error tracking through the Sentry SDK, started only when `BETTER_STACK_ERRORS_DSN` is set, without personal data or request bodies |
 | `gunicorn.conf.py` | The production server: Uvicorn workers, their number and timeout from settings, gunicorn's lines through `app/logger.py` |
 
 ## Web layout
@@ -113,7 +113,7 @@ Inside the API a request passes through, in order:
 | `src/components/` | Shared components (`AnswerOption`, `CodeBlock`, `TopicNode`, `StreakCard`, `StateScreen` and others); `ui/` holds the primitives of `design/README.md` |
 | `src/api/` | `client.ts` (the typed fetch client and `ApiError`), `queries.ts` (every API call as a TanStack Query hook), `types.ts`; `openapi.json` and `schema.d.ts` are written by `make types` and committed |
 | `src/i18n/` | `pt-BR.json`, `en.json` and the setup. All interface text is here |
-| `src/lib/` | Theme, language and timezone preferences, flags, the syntax highlighter, product events, `cn()`, and `monitoring.ts`: Sentry and Plausible, built in only when their keys are set at build time |
+| `src/lib/` | Theme, language and timezone preferences, flags, the syntax highlighter, product events, `cn()`, and `monitoring.ts`: Better Stack error tracking (through the Sentry SDK) and Plausible, built in only when their keys are set at build time |
 | `src/test/` | Sample API data (`fixtures.ts`), the mock API and the render helpers of the component tests |
 | `src/prerender.tsx` | Build-time entry that renders the landing page to HTML |
 | `src/styles/index.css` | Tailwind entry and base rules. No token is defined here |

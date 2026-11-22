@@ -58,7 +58,7 @@ request over a limit is a 429 `rate_limited`, with `Retry-After` in
 seconds.
 """
 
-# Before the app exists, so that Sentry's integrations see it created.
+# Before the app exists, so that the Sentry SDK's integrations see it created.
 setup_error_tracking(get_settings())
 
 app = FastAPI(

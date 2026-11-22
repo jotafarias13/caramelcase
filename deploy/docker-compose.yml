@@ -76,7 +76,7 @@ services:
       context: ..
       dockerfile: deploy/web.Dockerfile
       args:
-        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+        VITE_BETTER_STACK_ERRORS_DSN: ${VITE_BETTER_STACK_ERRORS_DSN:-}
         VITE_PLAUSIBLE_DOMAIN: ${VITE_PLAUSIBLE_DOMAIN:-}
         VITE_PLAUSIBLE_SCRIPT: ${VITE_PLAUSIBLE_SCRIPT:-}
     restart: unless-stopped

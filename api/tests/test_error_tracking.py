@@ -1,4 +1,4 @@
-"""Error tracking is off unless a Sentry DSN is set."""
+"""Error tracking is off unless a Better Stack DSN is set."""
 
 import pytest
 import sentry_sdk
@@ -23,7 +23,7 @@ def init_calls(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, object]]:
 def test_nothing_starts_without_a_dsn(
     init_calls: list[dict[str, object]], dsn: str | None
 ) -> None:
-    assert setup_error_tracking(Settings(sentry_dsn=dsn)) is False
+    assert setup_error_tracking(Settings(better_stack_errors_dsn=dsn)) is False
     assert init_calls == []
 
 
@@ -31,7 +31,7 @@ def test_a_dsn_starts_it_without_personal_data(
     init_calls: list[dict[str, object]],
 ) -> None:
     settings = Settings(
-        sentry_dsn="https://key@errors.example.com/1",
+        better_stack_errors_dsn="https://key@errors.example.com/1",
         environment="production",
     )
 

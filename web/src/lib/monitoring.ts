@@ -1,14 +1,15 @@
-// Error tracking (Sentry) and external analytics (Plausible). Each is off
-// unless its key was set when the app was built: VITE_SENTRY_DSN and
-// VITE_PLAUSIBLE_DOMAIN (deploy/.env.example). While a key is empty, the
-// build holds none of that service's code and nothing is sent to it.
+// Error tracking (Better Stack, through the Sentry SDK) and external
+// analytics (Plausible). Each is off unless its key was set when the app
+// was built: VITE_BETTER_STACK_ERRORS_DSN and VITE_PLAUSIBLE_DOMAIN
+// (deploy/.env.example). While a key is empty, the build holds none of that
+// service's code and nothing is sent to it.
 import type { Breadcrumb, ErrorEvent } from "@sentry/browser";
 
 const PLAUSIBLE_SCRIPT = "https://plausible.io/js/script.js";
 
 /** Starts each service whose key is set. */
 export function startMonitoring(): void {
-  const dsn = import.meta.env.VITE_SENTRY_DSN;
+  const dsn = import.meta.env.VITE_BETTER_STACK_ERRORS_DSN;
   if (dsn) void startErrorTracking(dsn);
 
   const domain = import.meta.env.VITE_PLAUSIBLE_DOMAIN;

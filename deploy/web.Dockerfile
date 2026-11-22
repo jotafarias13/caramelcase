@@ -18,7 +18,7 @@ COPY web/ ./
 
 # Optional keys, read at build time by src/lib/monitoring.ts. Empty means
 # off: the build then holds no code of either service.
-ARG VITE_SENTRY_DSN=""
+ARG VITE_BETTER_STACK_ERRORS_DSN=""
 ARG VITE_PLAUSIBLE_DOMAIN=""
 ARG VITE_PLAUSIBLE_SCRIPT=""
 RUN npm run build

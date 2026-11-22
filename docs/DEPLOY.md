@@ -22,11 +22,11 @@ The "Build and publish images" workflow runs CI first and builds nothing from a 
 | SMTP | Yes, for email sign-in | Host, port (587, STARTTLS), username, password and a From address. Without them nobody can sign in by email; guests can still play. Set up SPF and DKIM for the sending domain with your email provider, so sign-in links do not land in spam. |
 | Google sign-in | Optional | An OAuth client of type "Web application" in Google Cloud, with `https://<DOMAIN>/api/v1/auth/google/callback` as its redirect URI. While its consent screen is in "Testing", only the test users you list can sign in. Without it there is no Google button. |
 | A Let's Encrypt email | Yes | Any address you read: `CERTBOT_EMAIL`. |
-| Sentry, Plausible | Optional | Both are off until their keys are set. Before switching either on, add it to the privacy policy (`docs/RUNBOOK.md`, "Logs and monitoring"). |
+| Better Stack, Plausible | Optional | Better Stack for error tracking, and if you want them, uptime monitoring and log collection; Plausible for analytics. Error tracking and analytics stay off until their keys are set. Before switching on error tracking, analytics or log collection, add the service to the privacy policy (`docs/RUNBOOK.md`, "Logs and monitoring"). |
 
 ## 3. GitHub secrets
 
-- [ ] Set in the repository's Settings, "Secrets and variables", "Actions": `DOCKER_HUB_USERNAME`, `DOCKER_HUB_TOKEN`, `VM_HOST`, `VM_USER`, `VM_SSH_PRIVATE_KEY`, `PROJECT_ROOT`, and optionally `VITE_SENTRY_DSN`, `VITE_PLAUSIBLE_DOMAIN`, `VITE_PLAUSIBLE_SCRIPT`.
+- [ ] Set in the repository's Settings, "Secrets and variables", "Actions": `DOCKER_HUB_USERNAME`, `DOCKER_HUB_TOKEN`, `VM_HOST`, `VM_USER`, `VM_SSH_PRIVATE_KEY`, `PROJECT_ROOT`, and optionally `VITE_BETTER_STACK_ERRORS_DSN`, `VITE_PLAUSIBLE_DOMAIN`, `VITE_PLAUSIBLE_SCRIPT`.
 
 `docs/RUNBOOK.md`, "The workflows' secrets", says what each one is.
 
@@ -43,7 +43,7 @@ The "Build and publish images" workflow runs CI first and builds nothing from a 
   - `POSTGRES_PASSWORD`: letters and digits only, for example `openssl rand -hex 24`
   - `APP_BASE_URL` and `CORS_ORIGINS`: both `https://<DOMAIN>`
   - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `EMAIL_FROM`
-  - optionally `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `SENTRY_DSN`
+  - optionally `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `BETTER_STACK_ERRORS_DSN`
 - [ ] **`docker login`** as that user, if any image is private.
 
 ## 5. The order that matters
@@ -58,6 +58,7 @@ These do not block a deploy, but they block opening the app to students:
 - [ ] **A hand check of about 50 questions per launch subject**, then publish each subject. Students see no subject until it is published (`docs/RUNBOOK.md`, "Publishing a subject").
 - [ ] **The legal text.** The privacy policy and the terms are placeholders with gaps in brackets and a "draft" note (`docs/RUNBOOK.md`, "Privacy policy and terms").
 - [ ] **Where backups go.** They are kept 14 days on the server's own disk only, so losing the server loses them too (`docs/RUNBOOK.md`, "Backup and restore").
-- [ ] **An uptime monitor** on `https://<DOMAIN>/api/v1/health` (optional).
+- [ ] **Uptime monitors** in Better Stack on `https://<DOMAIN>/api/v1/health` and `https://<DOMAIN>/`, and heartbeats for the backup and renewal cron jobs (optional; `docs/RUNBOOK.md`, "Uptime monitoring with Better Stack").
+- [ ] **Log collection** to Better Stack, so the logs outlive the server (optional; `docs/RUNBOOK.md`, "Log collection with Better Stack").
 
 `docs/PLAN.md`, "Still needed from the owner", has the full list of open items, including those that do not concern the deploy.
